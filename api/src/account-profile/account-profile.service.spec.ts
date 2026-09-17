@@ -3,8 +3,11 @@ import { AccountProfileService } from './account-profile.service';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
 import { DataCooker } from '../../test/utils/DataCooker/DataCooker';
+import { PrismaAdapterMockFactory } from '../../test/utils/mock-services/prisma.adapter.factory';
 import { PrismaService } from '../prisma/prisma.service';
+import { PrismaAdapterFactory } from '../prisma/prisma.adapter.factory';
 import { AccountRoleModule } from '../account-role/account-role.module';
+import { FileAssertService } from '../files/services/file-assert.service';
 
 describe('AccountProfileService', () => {
   let service: AccountProfileService;
@@ -26,8 +29,11 @@ describe('AccountProfileService', () => {
         AccountRoleModule,
         PrismaModule,
       ],
-      providers: [AccountProfileService],
-    }).compile();
+      providers: [AccountProfileService, FileAssertService],
+    })
+      .overrideProvider(PrismaAdapterFactory)
+      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .compile();
 
     service = module.get<AccountProfileService>(AccountProfileService);
     prismaService = module.get<PrismaService>(PrismaService);

@@ -4,9 +4,7 @@ import { PrismaAdapterFactory } from './prisma.adapter.factory';
 
 @Injectable()
 export class PrismaService extends PrismaClient {
-  constructor() {
-    super({
-      adapter: new PrismaAdapterFactory().create(),
-    });
+  constructor(factory: PrismaAdapterFactory) {
+    super({ adapter: factory.create() });
   }
 }

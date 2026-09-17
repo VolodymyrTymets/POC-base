@@ -9,6 +9,8 @@ import type { GraphQLResponseType } from '../utils/e2e-services/interfaces/types
 import { SignInService } from '../utils/e2e-services/sign-in.service';
 import { AccountProfileEntity } from '../../src/account-profile/entities/account-profile.entity';
 import { FORBIDDEN, UNAUTHORIZED } from '../../src/common/errors';
+import { PrismaAdapterMockFactory } from '../utils/mock-services/prisma.adapter.factory';
+import { PrismaAdapterFactory } from '../../src/prisma/prisma.adapter.factory';
 
 // todo: refactor according to e2e service logic
 describe('Update account profile (e2e)', () => {
@@ -24,7 +26,10 @@ describe('Update account profile (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PrismaAdapterFactory)
+      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .compile();
     prismaService = await moduleFixture.resolve(PrismaService);
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));

@@ -8,6 +8,8 @@ import { FileStatus } from '../../generated/prisma/enums';
 import { S3ManagerService } from '../../src/files/services/s3-manager.service';
 import { S3ManagerMockService } from '../utils/mock-services/s3-manager.service';
 import { FileE2EService } from '../utils/e2e-services/file-e2e.service';
+import { PrismaAdapterMockFactory } from '../utils/mock-services/prisma.adapter.factory';
+import { PrismaAdapterFactory } from '../../src/prisma/prisma.adapter.factory';
 
 describe('Upload file (e2e)', () => {
   let app: INestApplication<App>;
@@ -23,6 +25,8 @@ describe('Upload file (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
+      .overrideProvider(PrismaAdapterFactory)
+      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
       .overrideProvider(S3ManagerService)
       .useClass(S3ManagerMockService)
       .compile();
@@ -170,6 +174,8 @@ describe('Upload file (e2e)', () => {
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    if (dataCooker) {
+      await dataCooker.afterAll();
+    }
   });
 });
