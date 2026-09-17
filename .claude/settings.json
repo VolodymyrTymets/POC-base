@@ -17,14 +17,14 @@
       "Bash(pnpm --dir api run build:*)",
       "Bash(pnpm --dir api run prisma-gen:*)",
       "Bash(pnpm --dir api run format:*)",
+      "Bash(docker:*)", "Bash(docker compose:*)", "Bash(docker-compose:*)",
+      "Bash(git push:*)", "Bash(gh pr create:*)", "Bash(gh issue:*)",
+      "Bash(pnpm --dir api add:*)", "Bash(pnpm --dir api remove:*)",
+      "Bash(pnpm --dir api run prisma-migrate:*)", "Bash(pnpm --dir api run reset-db:*)",
       "mcp__context7__*",
       "mcp__serena__*"
     ],
     "ask": [
-      "Bash(git push:*)", "Bash(gh pr create:*)", "Bash(gh issue:*)",
-      "Bash(pnpm --dir api add:*)", "Bash(pnpm --dir api remove:*)",
-      "Bash(pnpm --dir api run prisma-migrate:*)", "Bash(pnpm --dir api run reset-db:*)",
-      "Bash(docker:*)", "Bash(docker compose:*)", "Bash(docker-compose:*)",
       "Edit(api/package.json)",
       "Edit(api/prisma/schema.prisma)", "Edit(api/prisma/models/**)",
       "Edit(.github/workflows/**)", "Edit(CLAUDE.md)", "Edit(.claude/**)",
