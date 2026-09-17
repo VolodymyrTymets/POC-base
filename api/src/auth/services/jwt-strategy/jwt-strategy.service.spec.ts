@@ -50,9 +50,7 @@ describe('JwtStrategyService', () => {
       providers: [TestJwtStrategyService],
     }).compile();
 
-    jwtStrategyService = app.get<TestJwtStrategyService>(
-      TestJwtStrategyService,
-    );
+    jwtStrategyService = app.get<TestJwtStrategyService>(TestJwtStrategyService);
     prismaService = app.get<PrismaService>(PrismaService);
   });
 

@@ -3,11 +3,7 @@ export type GraphQLResponseType<T> = {
     data: T;
     errors?: Array<{
       message: string;
-      extensions: {
-        code: string;
-        message: string;
-        originalError: { message: string };
-      };
+      extensions: { code: string; message: string; originalError: { message: string } };
     }>;
   };
 };

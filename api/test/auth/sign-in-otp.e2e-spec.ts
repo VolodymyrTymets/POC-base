@@ -113,7 +113,7 @@ describe('Sign in otp (e2e)', () => {
       accountResponse.body.data.account.AccountProfile.isPhoneVerified,
     ).toEqual(true);
     const accountId = accountResponse.body.data.account.id as string;
-    const accountRole = await prismaService.accountRole.findMany({
+    const accountRole= await prismaService.accountRole.findMany({
       where: {
         AccountOnRole: {
           some: {

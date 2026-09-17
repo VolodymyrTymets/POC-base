@@ -41,9 +41,7 @@ describe('OtpCodeGeneratorService', () => {
     });
 
     it('should produce different values across multiple calls', () => {
-      const codes = new Set(
-        Array.from({ length: 10 }, () => service.generateCode()),
-      );
+      const codes = new Set(Array.from({ length: 10 }, () => service.generateCode()));
       expect(codes.size).toBeGreaterThan(1);
     });
   });
@@ -86,6 +84,7 @@ describe('OtpCodeGeneratorService', () => {
       const result2 = await service.hashCode(code);
       expect(result1.hash).not.toBe(result2.hash);
     });
+
   });
 
   describe('verifyCode', () => {
