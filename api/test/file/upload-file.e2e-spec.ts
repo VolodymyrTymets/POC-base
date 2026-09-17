@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { PGlite } from '@electric-sql/pglite';
+import { postgis } from '@electric-sql/pglite-postgis';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
@@ -8,12 +10,19 @@ import { FileStatus } from '../../generated/prisma/enums';
 import { S3ManagerService } from '../../src/files/services/s3-manager.service';
 import { S3ManagerMockService } from '../utils/mock-services/s3-manager.service';
 import { FileE2EService } from '../utils/e2e-services/file-e2e.service';
+import { PrismaAdapterMockFactory } from '../utils/mock-services/prisma.adapter.factory';
+import { PrismaAdapterFactory } from '../../src/prisma/prisma.adapter.factory';
 
 describe('Upload file (e2e)', () => {
   let app: INestApplication<App>;
   let signInService: SignInService;
   let fileE2EService: FileE2EService;
-  const dataCooker = new DataCooker();
+  const pgLitle = new PGlite({
+    extensions: {
+      postgis,
+    },
+  });
+  const dataCooker = new DataCooker(pgLitle);
 
   beforeAll(async () => {
     await dataCooker.beforeAll();
@@ -23,6 +32,8 @@ describe('Upload file (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
+      .overrideProvider(PrismaAdapterFactory)
+      .useValue(new PrismaAdapterMockFactory(pgLitle))
       .overrideProvider(S3ManagerService)
       .useClass(S3ManagerMockService)
       .compile();

@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Logger } from '@nestjs/common';
 import { PGlite } from '@electric-sql/pglite';
-import { postgis } from '@electric-sql/pglite-postgis';
 import { PrismaClient } from 'generated/prisma/client';
 import { IDataCooker } from './IDataCooker';
 import { PrismaPGlite } from 'pglite-prisma-adapter';
@@ -10,16 +9,8 @@ import { MigrationService } from '../../../src/migrations/migration.service';
 import { MigrationsService } from '../../../src/migrations/migrations.service';
 
 export class DataCooker implements IDataCooker {
-  constructor() {
-    if (!global.pGlite) {
-      global.pGlite = new PGlite({
-        extensions: {
-          postgis,
-        },
-      });
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    this.pGlite = global.pGlite;
+  constructor(pglite: PGlite) {
+    this.pGlite = pglite;
     this.prisma = new PrismaClient({
       adapter: new PrismaPGlite(this.pGlite),
     });

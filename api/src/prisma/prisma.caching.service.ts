@@ -12,9 +12,9 @@ export interface IPrismaFactory {
 
 @Injectable()
 export class PrismaCashingService extends PrismaClient implements OnModuleInit {
-  constructor() {
+  constructor(factory: PrismaAdapterFactory) {
     super({
-      adapter: new PrismaAdapterFactory().create(),
+      adapter: factory.create(),
     });
   }
 
