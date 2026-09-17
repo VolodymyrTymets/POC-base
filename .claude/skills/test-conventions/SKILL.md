@@ -5,7 +5,7 @@ description: Test design conventions for the api/ NestJS + GraphQL + Prisma serv
 
 # Test Skill Guide
 
-This guide covers the testing patterns and best practices used in the `api/` project (a NestJS + GraphQL + Prisma service, currently the "Trukkit" instance of this POC base). Use this when writing or modifying tests. See also `.claude/rules/testing.md` and `.claude/rules/testing-js.md` for the rules this guide implements.
+This guide covers the testing patterns and best practices used in the `api/` project (a NestJS + GraphQL + Prisma service, currently the "POC" instance of this POC base). Use this when writing or modifying tests. See also `.claude/rules/testing.md` and `.claude/rules/testing-js.md` for the rules this guide implements.
 
 ## Testing Overview
 
