@@ -2,8 +2,9 @@ FROM node:22.16.0-alpine AS base
 
 WORKDIR /usr/src/app
 # node:22.16.0's bundled corepack (0.32.0) predates pnpm's current bin layout
-# (it looks for bin/pnpm.cjs, pnpm 12.x ships ./pnpm + bin/pnpm.mjs) — self-update first.
-RUN npm install -g corepack@latest && corepack enable
+# (it looks for bin/pnpm.cjs, pnpm 12.x ships ./pnpm + bin/pnpm.mjs) — self-update first, pinned for
+# reproducibility. Enable only the pnpm shim (ADR-0006: pnpm is the sole dependency manager).
+RUN npm install -g corepack@0.36.0 && corepack enable pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # --- Development Stage (API) ---
