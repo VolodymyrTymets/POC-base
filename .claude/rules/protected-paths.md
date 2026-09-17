@@ -1,0 +1,110 @@
+---
+description: Paths the agent must never write to, and paths that need confirmation first. Read by the guard-protected-paths hook.
+---
+
+# Protected paths
+
+Universal starter list. **`/setup` must append this repo's real paths** — the categories below tell you what
+to look for; the specific names differ per ecosystem and per repo.
+
+Categories to hunt for during setup:
+
+1. **Secrets and key material** — env files, certificates, private keys, signing material, service-account JSON.
+2. **Dependency directories and lockfiles** — anything a dependency manager owns and regenerates.
+3. **Build and cache output** — anything a build produces.
+4. **Generated code** — API clients, ORM clients, protobuf or schema-generated output, i18n bundles, anything with a generator command.
+5. **Platform build folders** — generated native or container build directories in a project that generates them from config.
+6. **Applied migrations** — immutable once run anywhere but a local machine.
+
+## Never write (hook blocks, no in-session override)
+
+```
+.env
+.env.*
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p8
+**/*.p12
+**/*.jks
+**/*.keystore
+**/*.mobileprovision
+**/id_rsa*
+**/*credentials*.json
+**/*service-account*.json
+dist/**
+build/**
+out/**
+target/**
+coverage/**
+tmp/**
+.cache/**
+**/*.generated.*
+**/*.gen.*
+**/generated/**
+**/__generated__/**
+**/migrations/**/*.sql
+*.lock
+*-lock.json
+*-lock.yaml
+```
+
+## Ask first (hook asks for confirmation)
+
+```
+.github/workflows/**
+.gitlab-ci.yml
+Dockerfile
+docker-compose*.yml
+Makefile
+CLAUDE.md
+.claude/**
+```
+
+## Project additions
+
+<!-- JS/TS ecosystem, appended by /setup step 4.5 -->
+
+```
+node_modules/**
+dist/**
+coverage/**
+api/node_modules/**
+api/dist/**
+api/coverage/**
+**/*.generated.*
+**/generated/**
+**/__generated__/**
+api/generated/**
+api/generated/prisma/**
+prisma/migrations/**/migration.sql
+api/prisma/migrations/**/migration.sql
+**/migrations/*.sql
+pnpm-lock.yaml
+api/pnpm-lock.yaml
+yarn.lock
+api/yarn.lock
+```
+
+Applied Prisma migration files (`api/prisma/migrations/**`) are immutable — add a new migration instead
+of editing one that has run anywhere but a local machine (P4, `db-migration` skill).
+
+## Ask first — this repo
+
+```
+api/package.json
+api/pnpm-workspace.yaml
+api/tsconfig*.json
+api/prisma/schema.prisma
+api/prisma/models/**
+api/schema.gql
+api/eslint.config.mjs
+api/.prettierrc
+api/Dockerfile
+api/docker-prisma-migration.sh
+docker-compose.yml
+```
+
+`api/schema.gql` is generated at boot from the `@Resolver`/`@ObjectType` decorators (code-first) — treat
+it as generated output even though it is committed; fix the decorators, not the file.

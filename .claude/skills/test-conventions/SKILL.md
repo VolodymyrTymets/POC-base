@@ -1,11 +1,11 @@
 ---
-name: teest-conventions
-description: Test design conventions
+name: test-conventions
+description: Test design conventions for the api/ NestJS + GraphQL + Prisma service
 ---
 
 # Test Skill Guide
 
-This guide covers the testing patterns and best practices used in the Trukkit API project. Use this when writing or modifying tests.
+This guide covers the testing patterns and best practices used in the `api/` project (a NestJS + GraphQL + Prisma service, currently the "POC" instance of this POC base). Use this when writing or modifying tests. See also `.claude/rules/testing.md` and `.claude/rules/testing-js.md` for the rules this guide implements.
 
 ## Testing Overview
 
@@ -18,9 +18,9 @@ The project uses **Jest** for unit tests and **e2e tests**, with:
 
 ## Test File Organization
 
-- **Unit Tests**: `src/**/*.spec.ts` (jest config from `jest-config.js`)
-- **E2E Tests**: `test/**/*e2e-spec.ts` (jest config from `test/jest-e2e.json`)
-- **Test Utilities**: `test/utils/**/*.ts`
+- **Unit Tests**: `api/src/**/*.spec.ts` (jest config from `api/test/jest.json`)
+- **E2E Tests**: `api/test/**/*.e2e-spec.ts` (jest config from `api/test/jest-e2e.json`)
+- **Test Utilities**: `api/test/utils/**/*.ts`
     - `DataCooker`: Manages database lifecycle
     - `e2e-sercices/**/*.ts`: Provides GraphQL client for e2e tests, queries and mutations
     - `mock-services/**/*.ts`: Mocks external services (e.g. AWS S3, Stripe, Twilio)
@@ -135,7 +135,7 @@ describe('MyService', () => {
 1. **Use Real Database**: Query PrismaService after service operations to verify database state
 2. **Mock External Services**: Use Jest spies for external APIs (notifiers, queues)
 3. **Test Error Cases**: Include tests for exceptions and edge cases
-4. **Clean Assertions**: Each test should verify one behavior clearly
+4. **Clear Assertions**: Each test should verify one behavior clearly
 5. **Test Data**: Use realistic test data (e.g., valid phone numbers `+1234567890`)
 
 ## Mocking Pattern
@@ -301,24 +301,24 @@ expect(dbTimestamp).toBeLessThanOrEqual(afterTime + 100); // 100ms buffer
 
 ## Running Tests
 
+The declared `pnpm --dir api run test` / `test:e2e` scripts invoke `node node_modules/.bin/jest` directly,
+which breaks under pnpm's POSIX-shell `.bin` shims (see root `docs/RUNBOOK.md`). Use these instead, from the repo root:
+
 ```bash
-# Run all tests
-yarn run test
+# Run all unit tests
+NODE_OPTIONS=--experimental-vm-modules pnpm --dir api exec jest --config ./test/jest.json
 
-# Run tests in watch mode
-yarn run test:watch
+# Run a specific test file
+NODE_OPTIONS=--experimental-vm-modules pnpm --dir api exec jest --config ./test/jest.json src/auth/auth.service.spec.ts
 
-# Run specific test file
-yarn run test -- src/auth/auth.service.spec.ts
-
-# Run tests matching pattern
-yarn run test -- --testNamePattern="should authenticate"
+# Run tests matching a name pattern
+NODE_OPTIONS=--experimental-vm-modules pnpm --dir api exec jest --config ./test/jest.json --testNamePattern="should authenticate"
 
 # Run e2e tests
-yarn run test:e2e
+NODE_OPTIONS=--experimental-vm-modules pnpm --dir api exec jest --config ./test/jest-e2e.json
 
 # Run with coverage
-yarn run test:cov
+NODE_OPTIONS=--experimental-vm-modules pnpm --dir api exec jest --config ./test/jest.json --coverage
 ```
 
 ## Best Practices
@@ -336,7 +336,7 @@ yarn run test:cov
 
 ## Example: Complete OTP Auth Test
 
-See `src/auth/services/otp-auth-strategy.service.spec.ts` for a complete example covering:
+See `api/src/auth/services/otp-auth-strategy/otp-auth-strategy.service.spec.ts` for a complete example covering:
 - Account creation and OTP generation
 - OTP verification with token generation
 - Error handling (expired codes, invalid codes, missing accounts)
@@ -354,3 +354,5 @@ See `src/auth/services/otp-auth-strategy.service.spec.ts` for a complete example
 **GraphQL schema not found**: Some e2e tests need the full app initialization - use `AppModule` not individual modules
 
 **Timeout errors**: PGlite initialization can take time - adjust Jest timeout if needed
+
+**`SyntaxError` from `node_modules/.bin/jest`**: You are running the declared `test`/`test:e2e` npm script under pnpm. Use the `pnpm exec jest` invocations above instead (see root `docs/RUNBOOK.md`).

@@ -1,0 +1,9 @@
+# OS
+.DS_Store
+
+# IDEs and editors
+.idea/
+
+# Claude Code local/session state (per-developer, never shared)
+.claude/settings.local.json
+.claude/.state/
