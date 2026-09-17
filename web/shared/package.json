@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "license": "UNLICENSED",
+  "exports": {
+    "./api/*": "./api/*.ts",
+    "./components/*": "./components/*.tsx"
+  },
   "dependencies": {
     "@apollo/client": "^4.3.0",
     "@graphql-typed-document-node/core": "^3.2.0",

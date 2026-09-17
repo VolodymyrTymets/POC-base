@@ -172,6 +172,9 @@ importers:
       '@graphql-codegen/client-preset':
         specifier: ^6.2.0
         version: 6.2.0(graphql@17.0.2)
+      '@types/node':
+        specifier: ^22.20.3
+        version: 22.20.3
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -181,9 +184,15 @@ importers:
       oxlint:
         specifier: ^1.83.0
         version: 1.83.0
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
 
   packages/admin:
     dependencies:
+      '@web/shared':
+        specifier: workspace:*
+        version: link:../../shared
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -218,6 +227,9 @@ importers:
 
   packages/app:
     dependencies:
+      '@web/shared':
+        specifier: workspace:*
+        version: link:../../shared
       react:
         specifier: ^19.3.0
         version: 19.3.0

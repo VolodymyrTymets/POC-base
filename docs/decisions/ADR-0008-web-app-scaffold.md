@@ -60,8 +60,18 @@ future POC can repoint it at a live URL if it wants to.
 - Accepted cost: a developer following the ticket's implementation-details section literally will find
   the actual dependency (`client-preset`) and output path differ from what's written there — this ADR
   and `docs/features/KAN-5/spec.md`'s Open Questions are the record of why.
-- Follow-ups (not done here, flagged for the team): web test tooling (Vitest/RTL) is deferred to a
-  follow-up ticket; no CI wiring exists for `web/` yet (rule T4 — separate PR).
+- **Apollo Client is installed (`web/shared/package.json`) but not yet wired into either app** — no
+  `ApolloClient`/`ApolloProvider` instance exists yet, and `VITE_GRAPHQL_URL` is not read by any code.
+  This is deliberate: the confirmed scope for KAN-5 is a pure structural scaffold (no real query wired
+  into a component — see spec.md's Open Questions #1), so the dependency and env var are staged for the
+  follow-up ticket that adds the first real query, not dead weight left by accident.
+- Follow-ups (not done here, flagged for the team): wiring `ApolloClient`/`ApolloProvider` and consuming
+  the generated GraphQL types from a real component; web test tooling (Vitest/RTL) is deferred to
+  KAN-11; no CI wiring exists for `web/` yet (rule T4 — separate PR). The `bypass-scan` CI job
+  (`.github/workflows/agent-checks.yml`) will fail on this PR because the `client-preset`-generated files
+  under `web/shared/api/generated/` carry an unconditional `/* eslint-disable */` header with no `WHY:` —
+  the job has no path exclusion for generated output. Not fixed here: `.github/workflows/**` is only
+  touched in a dedicated PR with a human reviewer (rule T4). Flagged in the PR body instead.
 
 ## Revisit when
 Apollo Client's ecosystem adds a `typescript-react-apollo`-equivalent that supports v4+, or the team
