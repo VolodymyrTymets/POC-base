@@ -13,7 +13,8 @@ This repo currently contains one deployable, `api/` (NestJS + GraphQL). A `web/`
 |------|---------|
 | install | `pnpm --dir api install` |
 | typecheck | `pnpm --dir api exec tsc --noEmit` |
-| lint | `pnpm --dir api run lint` |
+| lint | `pnpm --dir api run lint` (Oxlint, check-only — ADR-0007) |
+| lint (fix) | `pnpm --dir api run lint:fix` — not type-aware; always re-run typecheck afterwards, it can silently strip a load-bearing cast (ADR-0007) |
 | unit tests | `NODE_OPTIONS=--experimental-vm-modules pnpm --dir api exec jest --config ./test/jest.json` |
 | affected tests | none — single package, no affected-test tooling |
 | build | `pnpm --dir api run build` |

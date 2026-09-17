@@ -16,7 +16,8 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/apps/main",
     "worker:start:prod": "node dist/apps/worker",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "lint": "oxlint src test",
+    "lint:fix": "oxlint --fix src test",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest.json",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -74,8 +75,6 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.4",
     "@electric-sql/pglite-postgis": "^0.2.4",
-    "@eslint/eslintrc": "^3.2.0",
-    "@eslint/js": "^9.18.0",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
@@ -90,11 +89,8 @@
     "@types/pg": "^8.20.0",
     "@types/supertest": "^7.0.0",
     "dotenv": "^17.4.2",
-    "eslint": "^9.18.0",
-    "eslint-config-prettier": "^10.0.1",
-    "eslint-plugin-prettier": "^5.2.2",
-    "globals": "^17.0.0",
     "jest": "^30.0.0",
+    "oxlint": "^1.83.0",
     "pglite-prisma-adapter": "^0.7.2",
     "prettier": "^3.4.2",
     "prisma": "^7.9.0",
@@ -105,7 +101,6 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.23.1",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript": "^5.7.3"
   }
 }
