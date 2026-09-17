@@ -2,5 +2,13 @@
   "name": "@web/shared",
   "version": "0.0.1",
   "private": true,
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@apollo/client": "^4.3.0",
+    "@graphql-typed-document-node/core": "^3.2.0",
+    "graphql": "^17.0.2"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
 }
