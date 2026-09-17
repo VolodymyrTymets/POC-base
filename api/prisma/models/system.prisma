@@ -1,0 +1,18 @@
+model DeletedHistory {
+  id         String  @id @default(uuid(4))
+  relationId String
+  deletedAt  Boolean
+  deletedBy  String?
+
+  @@index([relationId])
+}
+
+model Migration {
+  id          String    @id @default(uuid(4))
+  name        String
+  successful  Boolean   @default(false)
+  result      String?
+  description String?
+  createdAt   DateTime? @default(now())
+  updatedAt   DateTime? @updatedAt
+}

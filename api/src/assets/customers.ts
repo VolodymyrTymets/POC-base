@@ -1,0 +1,32 @@
+export default [
+  {
+    email: 'customer+d1@apiko.com',
+    phoneNumber: '+12125551211',
+    firstName: 'John',
+    lastName: 'Doe',
+    middleName: 'Smith',
+    dataOfBirth: '1990-01-01',
+    SSN: '123-45-6789',
+    password: 'Customer+d1@apiko.com',
+  },
+  {
+    email: 'customer+d2@apiko.com',
+    phoneNumber: '+12125551212',
+    firstName: 'Jane',
+    lastName: 'Doe',
+    middleName: 'Smith',
+    dataOfBirth: '1995-05-05',
+    SSN: '987-65-4321',
+    password: 'Customer+d2@apiko.com',
+  },
+  {
+    email: 'customer+d3@apiko.com',
+    phoneNumber: '+12125551213',
+    firstName: 'Alice',
+    lastName: 'Smith',
+    middleName: 'Johnson',
+    dataOfBirth: '1985-10-10',
+    SSN: '456-78-9012',
+    password: 'Customer+d3@apiko.com',
+  },
+];

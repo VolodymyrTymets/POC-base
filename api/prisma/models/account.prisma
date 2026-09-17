@@ -1,0 +1,79 @@
+enum AccountRoleType {
+  CUSTOMER
+  ADMIN
+}
+
+model Account {
+  id                String    @id @default(uuid(4))
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime? @updatedAt
+  deleted           Boolean   @default(false)
+  lastLoginAt       DateTime
+  lastAccountRoleId String?
+
+  AccountIdentity       AccountIdentity?
+  AccountProfile        AccountProfile?
+  AccountOnRole         AccountOnRole[]
+  LastAccountRole       AccountRole?            @relation(fields: [lastAccountRoleId], references: [id])
+  NotificationRecipient NotificationRecipient[]
+
+  Files File[]
+
+  @@index([createdAt(sort: Desc)])
+}
+
+model AccountRole {
+  id            String          @id @default(uuid(4))
+  type          AccountRoleType @unique
+  AccountOnRole AccountOnRole[]
+  deleted       Boolean         @default(false)
+  accounts      Account[]
+
+  @@index([type, deleted])
+}
+
+model AccountOnRole {
+  roleId      String
+  accountId   String
+  AccountRole AccountRole @relation(fields: [roleId], references: [id])
+  Account     Account     @relation(fields: [accountId], references: [id])
+  deleted     Boolean     @default(false)
+
+  @@id([roleId, accountId])
+  @@index([deleted])
+}
+
+model AccountIdentity {
+  id           String    @id @default(uuid(4))
+  accountId    String    @unique
+  Account      Account   @relation(fields: [accountId], references: [id])
+  hash         String?
+  salt         String?
+  otpHash      String?
+  otpSalt      String?
+  otpExpiresAt DateTime?
+  refreshToken String?
+  deleted      Boolean   @default(false)
+
+  @@index([deleted])
+}
+
+model AccountProfile {
+  id              String  @id @default(uuid(4))
+  accountId       String  @unique
+  Account         Account @relation(fields: [accountId], references: [id])
+  email           String?
+  phoneNumber     String?
+  isPhoneVerified Boolean @default(false)
+  firstName       String?
+  lastName        String?
+  middleName      String?
+  dataOfBirth     String?
+  SSN             String?
+  deleted         Boolean @default(false)
+  is18YearOld     Boolean @default(false)
+  avatarId        String?
+  Avatar          File?   @relation(fields: [avatarId], references: [id])
+
+  @@index([deleted])
+}

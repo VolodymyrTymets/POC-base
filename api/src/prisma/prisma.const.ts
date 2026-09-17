@@ -1,0 +1,1 @@
+export const PRISMA_FACTORY = 'PRISMA_FACTORY';

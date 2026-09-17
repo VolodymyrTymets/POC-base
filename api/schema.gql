@@ -1,0 +1,173 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type AccountProfileEntity {
+  """id"""
+  id: String!
+
+  """phoneNumber"""
+  phoneNumber: String!
+
+  """firstName"""
+  firstName: String
+
+  """lastName"""
+  lastName: String
+
+  """middleName"""
+  middleName: String
+
+  """dataOfBirth"""
+  dataOfBirth: String
+
+  """SSN"""
+  SSN: String
+
+  """email"""
+  email: String
+
+  """isPhoneVerified"""
+  isPhoneVerified: Boolean!
+}
+
+type AccountEntity {
+  """id"""
+  id: String!
+
+  """createdAt"""
+  createdAt: DateTime
+
+  """updatedAt"""
+  updatedAt: DateTime
+  AccountProfile: AccountProfileEntity
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type FileEntity {
+  id: String!
+  name: String
+  mimeType: String
+  size: Float
+  status: FileStatus!
+  createdAt: DateTime!
+
+  """public url"""
+  publicUrl: String
+}
+
+enum FileStatus {
+  FILE_STATUS_CREATED
+  FILE_STATUS_UPLOAD_IN_PROGRESS
+  FILE_STATUS_UPLOAD_COMPLETED
+  FILE_STATUS_UPLOAD_FAILED
+}
+
+type CreateFileEntity {
+  file: FileEntity!
+  uploadUrl: String!
+}
+
+type AuthTokensEntity {
+  """JWT access token (15 min)"""
+  accessToken: String!
+
+  """JWT refresh token (7 days)"""
+  refreshToken: String!
+}
+
+type SignInOtpEntity {
+  """Is success sent to user"""
+  success: Boolean!
+  code: String
+}
+
+type Query {
+  """Get current account"""
+  account: AccountEntity!
+  file(fileId: String!): FileEntity
+}
+
+type Mutation {
+  """Update account profile"""
+  updateAccountProfile(accountId: String!, accountProfileInput: UpdateAccountProfileInput!): AccountProfileEntity!
+
+  """Create a new file. Generate upload URL."""
+  createFile(input: CreateFileInput!): CreateFileEntity!
+
+  """Update a file."""
+  updateFile(fileId: String!, input: UpdateFileInput!): FileEntity!
+
+  """Request a one-time SMS code for a phone number"""
+  signInOtp(signInInput: SignInInput!): SignInOtpEntity!
+
+  """Exchange a valid OTP code for access and refresh tokens"""
+  verifyOtp(verifyOtpInput: VerifyOtpInput!): AuthTokensEntity!
+
+  """Refresh access token using a valid refresh token."""
+  refreshToken: AuthTokensEntity!
+  signOut: Boolean!
+}
+
+input UpdateAccountProfileInput {
+  """firstName"""
+  firstName: String
+
+  """lastName"""
+  lastName: String
+
+  """email"""
+  email: String
+
+  """middleName"""
+  middleName: String
+
+  """dataOfBirth"""
+  dataOfBirth: String
+
+  """SSN"""
+  SSN: String
+
+  """is18YearOld"""
+  is18YearOld: Boolean = false
+  avatarId: String
+}
+
+input CreateFileInput {
+  """file name"""
+  name: String
+
+  """file mime type"""
+  mimeType: String
+
+  """file size"""
+  size: Float
+}
+
+input UpdateFileInput {
+  """file name"""
+  name: String
+
+  """file mime type"""
+  mimeType: String
+
+  """file size"""
+  size: Float
+
+  """file status"""
+  status: FileStatus!
+}
+
+input SignInInput {
+  """phoneNumber"""
+  phoneNumber: String!
+}
+
+input VerifyOtpInput {
+  phoneNumber: String!
+  code: String!
+}
