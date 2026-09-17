@@ -11,6 +11,7 @@
 |--------|---------|--------------------|--------------------|-------------|---------------|
 | context7 | library docs | none (library names only) | read | internal | — |
 | serena | code navigation | this repo, locally | read | internal | — |
+| atlassian | Jira ticket lookup (`KAN-*`) for `/plan` | Jira issues on the `apiko-team` Atlassian Cloud site — no Confluence/Bitbucket data unless a tool is used for it | read | volodymyr · 2026-09-17 | OAuth 2.1 session (browser login); no long-lived token stored |
 
 ## Not installed (recommended, needs a human to add)
 | Server / plugin | Purpose | Why not on by default |
