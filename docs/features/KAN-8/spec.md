@@ -54,9 +54,10 @@ installable and runnable on the first try with the one dependency manager the re
       `pnpm --dir api run test` / `run test:e2e` directly — verified, same pass/fail counts as the
       `pnpm exec jest --config ...` form.
 
-**Follow-up ticket recommended:** fix the `Customers`/`Customer` model bug (blocks app boot + most of the
-test suite, see `docs/RUNBOOK.md`) and the `docker-compose.yml` build-context/env-file mismatches found
-while verifying this ticket (also `docs/RUNBOOK.md`) — both out of scope here per rule B4/C1.
+**Follow-up:** the `Customers`/`Customer` model bug (blocks app boot + most of the test suite, see
+`docs/RUNBOOK.md`) is already tracked as **KAN-4**. The `docker-compose.yml` build-context/env-file
+mismatches found while verifying this ticket (also `docs/RUNBOOK.md`) have no ticket yet — both out of
+scope here per rule B4/C1.
 
 ## Edge cases
 | Case | Expected behaviour | Decided by |
