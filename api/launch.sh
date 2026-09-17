@@ -1,3 +1,3 @@
 ttab  'redis-stack-server'
-ttab  'yarn worker:start:dev'
-ttab  'yarn start:dev'
+ttab  'pnpm worker:start:dev'
+ttab  'pnpm start:dev'

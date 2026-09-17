@@ -1,22 +1,26 @@
 FROM node:22.16.0-alpine AS base
 
 WORKDIR /usr/src/app
-COPY package*.json ./
+# node:22.16.0's bundled corepack (0.32.0) predates pnpm's current bin layout
+# (it looks for bin/pnpm.cjs, pnpm 12.x ships ./pnpm + bin/pnpm.mjs) — self-update first, pinned for
+# reproducibility. Enable only the pnpm shim (ADR-0006: pnpm is the sole dependency manager).
+RUN npm install -g corepack@0.36.0 && corepack enable pnpm
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # --- Development Stage (API) ---
 FROM base AS development
-RUN yarn install
+RUN pnpm install --frozen-lockfile
 COPY . .
 RUN chmod +x ./docker-prisma-migration.sh
 RUN npx prisma generate
 ENTRYPOINT ["./docker-prisma-migration.sh"]
 EXPOSE 3001
-CMD ["yarn", "start"]
+CMD ["pnpm", "start"]
 
 # --- Worker Stage ---
 FROM base AS worker
-RUN yarn install
+RUN pnpm install --frozen-lockfile
 COPY . .
 RUN chmod +x ./docker-prisma-migration.sh
 RUN npx prisma generate
-CMD ["yarn", "worker:start:dev"]
+CMD ["pnpm", "worker:start:dev"]

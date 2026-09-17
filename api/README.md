@@ -7,7 +7,7 @@ Api based on [Nest](https://github.com/nestjs/nest) framework.
 ## Project setup
 
 ```bash
-$ yarn install
+$ pnpm install
 ```
 
 ## Compile and run the project
@@ -16,14 +16,14 @@ see `.env.example` file for more information
 After that,
 ```bash
 # development
-$ yarn run start
+$ pnpm run start
 
 # watch mode
-$ yarn run start:dev
-$ yarn run worker:start:dev
+$ pnpm run start:dev
+$ pnpm run worker:start:dev
 
 # production mode
-$ yarn run start:prod
+$ pnpm run start:prod
 ```
 Or run via docker
 ```bash
@@ -40,13 +40,13 @@ For more information about testing, check out the ``.claude/skills/test-skill.md
 To run the tests,
 ```bash
 # unit tests
-$ yarn run test
+$ pnpm run test
 
 # e2e tests
-$ yarn run test:e2e
+$ pnpm run test:e2e
 
 # test coverage
-$ yarn run test:cov
+$ pnpm run test:cov
 ```
 
 ## Deployment
@@ -56,7 +56,7 @@ When you're ready to deploy your NestJS application to production, there are som
 If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
 
 ```bash
-$ yarn install -g @nestjs/mau
+$ pnpm add -g @nestjs/mau
 $ mau deploy
 ```
 
