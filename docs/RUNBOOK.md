@@ -24,6 +24,26 @@ pnpm --dir api run worker:start:dev # background worker
 ```
 Or via Docker for the whole stack: `docker compose up -d --build` (runs `docker-prisma-migration.sh`, which waits for Postgres then runs `prisma migrate deploy` before starting the app).
 
+## First run — web/
+```bash
+# prerequisites: api/schema.gql must already exist on disk (build api/ once if it's a fresh clone —
+# codegen reads this file directly, it does not need api's dev server, DB or Docker running)
+pnpm --dir web install
+
+# generate typed GraphQL output from api/schema.gql
+pnpm --dir web run codegen
+
+# run it
+pnpm --dir web/packages/app run dev    # app on :5173
+pnpm --dir web/packages/admin run dev  # admin on :5174
+
+# or build
+pnpm --dir web/packages/app run build
+pnpm --dir web/packages/admin run build
+```
+No env file is required for `codegen` on a fresh clone — it defaults to `../api/schema.gql` when
+`GRAPHQL_SCHEMA_PATH` isn't set (see `web/codegen.ts`, ADR-0008).
+
 ## Commands
 See the command map in `CLAUDE.md` — that is the canonical list.
 
@@ -31,6 +51,7 @@ See the command map in `CLAUDE.md` — that is the canonical list.
 - `schema.gql` regenerates itself on `start:dev`/`build` — you do not run a separate schema codegen step, but you do need the app to boot successfully once for it to update.
 - Seed/reference data (roles, admin/dev fixtures) is not part of `prisma migrate` — it runs separately via the `IMigrationItem`s in `api/src/migrations/items/` (all environments) and `api/src/migrations/items.development/` (dev only), triggered by `docker-prisma-migration.sh` or on app boot through `MigrationsModule`.
 - `api/.env.test` intentionally leaves `DATABASE_URL` commented out — tests use PGlite (`DATABASE_DIR`), not a real Postgres connection.
+- `pnpm --dir web run codegen` needs `api/schema.gql` to exist on disk (build/boot `api/` once on a fresh clone) — it does not talk to a live server, so `api/`'s docker/DB stack doesn't need to be running.
 
 ## Known failures
 

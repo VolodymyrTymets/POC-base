@@ -6,13 +6,16 @@
 ## Repo layout
 | Path | What lives here | Deployable? | Owner |
 |------|-----------------|-------------|-------|
-| `api/` | NestJS + GraphQL + Prisma backend (this repo's only deployable today) | yes — two entrypoints, `api` and `worker` | backend |
+| `api/` | NestJS + GraphQL + Prisma backend | yes — two entrypoints, `api` and `worker` | backend |
 | `api/src/<feature>/` | one module per domain area: `account`, `account-profile`, `account-role`, `auth`, `files`, `background-workers`, `notifier`, `migrations`, `common`, `prisma`, `decorators` | — | backend |
 | `api/prisma/` | Prisma schema (split across `models/*.prisma`) and migrations | — | backend |
 | `api/generated/prisma/` | generated Prisma Client — never hand-edit | — | generated |
 | `api/schema.gql` | generated GraphQL SDL (code-first, from resolver decorators) — never hand-edit | — | generated |
 | `api/test/` | e2e specs, `DataCooker`, GraphQL test client, service mocks | — | backend |
-| `web/` | planned React app (see root `README.md`) — does not exist yet | tbd | frontend |
+| `web/` | Vite + React + TypeScript frontend, scaffolded by KAN-5 (ADR-0008) — own pnpm workspace, separate from `api/`'s | yes — two entrypoints, `app` and `admin` | frontend |
+| `web/packages/app/`, `web/packages/admin/` | the two apps — placeholder routes only so far, no real screens yet | — | frontend |
+| `web/shared/` | shared `components/`, `theme/` (Tailwind v4 tokens) and `api/` (GraphQL documents + `client-preset` output) consumed by both apps | — | frontend |
+| `web/shared/api/generated/` | generated GraphQL types (`@graphql-codegen/client-preset`, from `api/schema.gql`) — never hand-edit | — | generated |
 | `docker-compose.yml` | local dev stack: `api`, `worker`, Postgres+PostGIS, Redis | — | backend |
 
 ## Where data truth lives
@@ -27,6 +30,7 @@
 | GraphQL API | GraphQL over HTTP (Apollo, `/graphql`) | `@Resolver`/`@ObjectType`/`@InputType` decorators in `api/src/**` | `api/schema.gql` | automatic on `pnpm --dir api run start:dev` boot |
 | Database schema | Prisma schema | `api/prisma/models/*.prisma` | `api/generated/prisma/**`, `api/prisma/migrations/**` | `pnpm --dir api run prisma-gen` (client), `pnpm --dir api run prisma-migrate` (migration, local DB only) |
 | File storage | S3 object + presigned URL | `api/src/files/` (`S3ManagerService`) | — | — |
+| `web/`'s GraphQL types | TypeScript, from `api/schema.gql` | `api/schema.gql` (not live introspection — see ADR-0008) | `web/shared/api/generated/**` | `pnpm --dir web run codegen` |
 
 There is no REST contract of note: `AppController` exposes a single `/test` placeholder route, not a real API surface.
 

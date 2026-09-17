@@ -34,20 +34,20 @@ codegen wired to the real API schema) the same way `api/` already exists as a re
   - Docker/staging/production wiring for `web/` — none exists for `api/` either yet
 
 ## Acceptance criteria
-- [ ] AC1 `web/pnpm-workspace.yaml` exists covering `packages/app`, `packages/admin`, `shared`, and
+- [x] AC1 `web/pnpm-workspace.yaml` exists covering `packages/app`, `packages/admin`, `shared`, and
       `pnpm --dir web install` succeeds
-- [ ] AC2 `pnpm --dir web/packages/app run dev` serves a placeholder page (port 5173), styled with
+- [x] AC2 `pnpm --dir web/packages/app run dev` serves a placeholder page (port 5173), styled with
       Tailwind, confirmed in a browser
-- [ ] AC3 `pnpm --dir web/packages/admin run dev` serves its own placeholder page on a different port
+- [x] AC3 `pnpm --dir web/packages/admin run dev` serves its own placeholder page on a different port
       (5174) concurrently with `app`, confirmed in a browser
-- [ ] AC4 Both apps' built CSS includes a utility/token defined once in `web/shared/theme`, proving the
+- [x] AC4 Both apps' built CSS includes a utility/token defined once in `web/shared/theme`, proving the
       shared package is actually consumed, not just scaffolded empty
-- [ ] AC5 `pnpm --dir web run codegen` generates typed output under `web/shared/api/generated/` from
+- [x] AC5 `pnpm --dir web run codegen` generates typed output under `web/shared/api/generated/` from
       `api/schema.gql`, with zero live-server/DB dependency
-- [ ] AC6 `pnpm --dir web/packages/app run build`, `...admin run build`, and
+- [x] AC6 `pnpm --dir web/packages/app run build`, `...admin run build`, and
       `pnpm --dir web -r exec tsc --noEmit` all pass with zero errors
-- [ ] AC7 `pnpm --dir web run lint` (Oxlint) reports zero errors on the scaffolded code
-- [ ] AC8 `CLAUDE.md` carries a web stack section (and stays under 200 lines), `ARCHITECTURE.md`'s
+- [x] AC7 `pnpm --dir web run lint` (Oxlint) reports zero errors on the scaffolded code
+- [x] AC8 `CLAUDE.md` carries a web stack section (and stays under 200 lines), `ARCHITECTURE.md`'s
       `web/` row is updated, and a new ADR records the stack decisions below
 
 ## Edge cases
