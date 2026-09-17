@@ -1,0 +1,11 @@
+{
+  "name": "web",
+  "version": "0.0.1",
+  "private": true,
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": "22.16.0"
+  },
+  "scripts": {}
+}
