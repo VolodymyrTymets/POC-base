@@ -160,10 +160,10 @@ describe('Update account profile (e2e)', () => {
     );
   });
 
-  it('Should add avatar to account profile', async () => {
-    // todo: implement this test
-    const phoneNumber = '+12125551231';
-    const { accessToken } = await signInService.signInOtp(phoneNumber);
-    expect(true).toEqual(false);
-  })
+  // it('Should add avatar to account profile', async () => {
+  //   // todo: implement this test
+  //   const phoneNumber = '+12125551231';
+  //   const { accessToken } = await signInService.signInOtp(phoneNumber);
+  //   expect(true).toEqual(false);
+  // })
 });

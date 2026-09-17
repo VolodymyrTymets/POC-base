@@ -25,7 +25,7 @@ export class InitCustomerMigration implements IMigrationItem {
   }
 
   async inNeedToRun() {
-    return (await this.prisma.customer.count()) === 0;
+    return (await this.prisma.account.count()) === 0;
   }
   async run() {
     try {

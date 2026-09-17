@@ -51,11 +51,6 @@ export class AccountService extends PrismaCashingService {
             phoneNumber,
           },
         },
-        Customers: {
-          create: {
-            createdAt: new Date(),
-          },
-        },
       },
     });
 
