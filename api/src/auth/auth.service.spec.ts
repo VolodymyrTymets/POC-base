@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';;
+import { AuthService } from './auth.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AccountRoleModule } from '../account-role/account-role.module';
 

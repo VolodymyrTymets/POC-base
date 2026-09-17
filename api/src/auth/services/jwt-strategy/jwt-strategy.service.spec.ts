@@ -6,9 +6,11 @@ import { ConfigModule } from '@nestjs/config';
 import { JwtStrategyService } from './jwt-strategy.service';
 import { PrismaModule } from '../../../prisma/prisma.module';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaAdapterFactory } from '../../../prisma/prisma.adapter.factory';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { DataCooker } from '../../../../test/utils/DataCooker/DataCooker';
+import { PrismaAdapterMockFactory } from '../../../../test/utils/mock-services/prisma.adapter.factory';
 import { AccountRoleModule } from '../../../account-role/account-role.module';
 
 @Injectable()
@@ -48,9 +50,14 @@ describe('JwtStrategyService', () => {
         }),
       ],
       providers: [TestJwtStrategyService],
-    }).compile();
+    })
+      .overrideProvider(PrismaAdapterFactory)
+      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .compile();
 
-    jwtStrategyService = app.get<TestJwtStrategyService>(TestJwtStrategyService);
+    jwtStrategyService = app.get<TestJwtStrategyService>(
+      TestJwtStrategyService,
+    );
     prismaService = app.get<PrismaService>(PrismaService);
   });
 

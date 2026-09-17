@@ -1,32 +1,30 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PGlite } from '@electric-sql/pglite';
 import { PrismaClient } from 'generated/prisma/client';
 import { IDataCooker } from './IDataCooker';
 import { PrismaPGlite } from 'pglite-prisma-adapter';
 import { MigrationService } from '../../../src/migrations/migration.service';
 import { MigrationsService } from '../../../src/migrations/migrations.service';
+import { AccountService } from '../../../src/account/account.service';
+import { AccountProfileService } from '../../../src/account-profile/account-profile.service';
+import { AccountRoleService } from '../../../src/account-role/account-role.service';
+import { FileAssertService } from '../../../src/files/services/file-assert.service';
+import type { IPrismaFactory } from '../../../src/prisma/prisma.caching.service';
+import { postgis } from '@electric-sql/pglite-postgis';
 
 export class DataCooker implements IDataCooker {
-  constructor(pglite: PGlite) {
-    this.pGlite = pglite;
-    this.prisma = new PrismaClient({
-      adapter: new PrismaPGlite(this.pGlite),
-    });
-    this.migrationsService = new MigrationsService(
-      new MigrationService(this.prisma),
-      this.prisma,
-    );
-  }
-  private readonly pGlite: PGlite;
-  private readonly prisma: PrismaClient;
+  constructor() {}
+  private pGlite: PGlite | undefined;
+  private prisma: PrismaClient | undefined;
   private prismaMigrationsPath = path.join(
     __dirname,
     '../../../',
     'prisma/migrations',
   );
-  private readonly migrationsService: MigrationsService;
+  private migrationsService: MigrationsService | undefined;
 
   private getMigrations() {
     const migrations: Array<{
@@ -72,12 +70,42 @@ export class DataCooker implements IDataCooker {
     const migrations = this.getMigrations();
     for (const migration of migrations) {
       Logger.log(`DataCooker] Executing migration: ${migration.migrationName}`);
-
+      if (this.pGlite === undefined || this.prisma === undefined) {
+        return;
+      }
       await this.pGlite.exec(migration.migrationContent);
     }
   }
 
   async beforeAll() {
+    this.pGlite = await PGlite.create({
+      extensions: {
+        postgis,
+      },
+    });
+    const prisma = new PrismaClient({
+      adapter: new PrismaPGlite(this.pGlite),
+    });
+    this.prisma = prisma;
+    const prismaFactory: IPrismaFactory = { create: () => prisma };
+    const accountRoleService = new AccountRoleService(prisma, prismaFactory);
+    const accountService = new AccountService(
+      prisma,
+      accountRoleService,
+      prismaFactory,
+    );
+    const accountProfileService = new AccountProfileService(
+      prisma,
+      prismaFactory,
+      new FileAssertService(new ConfigService(), prisma),
+    );
+    this.migrationsService = new MigrationsService(
+      new MigrationService(prisma),
+      prisma,
+      accountService,
+      accountProfileService,
+      accountRoleService,
+    );
     await this.initMigration();
     await this.migrationsService.runMigrations();
   }
@@ -89,8 +117,22 @@ export class DataCooker implements IDataCooker {
     // todo: implement
   }
   async afterAll() {
-    await this.pGlite.close();
+    if (!this.prisma) return;
+    if (!this.pGlite) return;
     await this.prisma.$disconnect();
-    global.pGlite = null;
+    await this.pGlite.close();
+  }
+
+  getPgLitle(): PGlite {
+    if (!this.pGlite) {
+      throw new Error('DataCooker.beforeAll() must run before getPgLitle()');
+    }
+    return this.pGlite;
+  }
+  getPrisma(): PrismaClient {
+    if (!this.prisma) {
+      throw new Error('DataCooker.beforeAll() must run before getPrisma()');
+    }
+    return this.prisma;
   }
 }

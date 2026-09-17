@@ -9,11 +9,14 @@ import { OtpCodeGeneratorService } from '../../src/auth/services/otp-auth-strate
 import type { GraphQLResponseType } from '../utils/e2e-services/interfaces/types';
 import { SignInService } from '../utils/e2e-services/sign-in.service';
 import { AccountRoleType } from '../../generated/prisma/enums';
+import { PrismaAdapterMockFactory } from '../utils/mock-services/prisma.adapter.factory';
+import { PrismaAdapterFactory } from '../../src/prisma/prisma.adapter.factory';
 
 describe('Sign in otp (e2e)', () => {
   let app: INestApplication<App>;
   let prismaService: PrismaService;
   let signInService: SignInService;
+
   const dataCooker = new DataCooker();
   const otpCodeGenerator = new OtpCodeGeneratorService();
 
@@ -24,7 +27,10 @@ describe('Sign in otp (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PrismaAdapterFactory)
+      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .compile();
     prismaService = await moduleFixture.resolve(PrismaService);
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -113,7 +119,7 @@ describe('Sign in otp (e2e)', () => {
       accountResponse.body.data.account.AccountProfile.isPhoneVerified,
     ).toEqual(true);
     const accountId = accountResponse.body.data.account.id as string;
-    const accountRole= await prismaService.accountRole.findMany({
+    const accountRole = await prismaService.accountRole.findMany({
       where: {
         AccountOnRole: {
           some: {

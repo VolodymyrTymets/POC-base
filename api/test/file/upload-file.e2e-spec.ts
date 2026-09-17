@@ -1,6 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PGlite } from '@electric-sql/pglite';
-import { postgis } from '@electric-sql/pglite-postgis';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
@@ -17,12 +15,7 @@ describe('Upload file (e2e)', () => {
   let app: INestApplication<App>;
   let signInService: SignInService;
   let fileE2EService: FileE2EService;
-  const pgLitle = new PGlite({
-    extensions: {
-      postgis,
-    },
-  });
-  const dataCooker = new DataCooker(pgLitle);
+  const dataCooker = new DataCooker();
 
   beforeAll(async () => {
     await dataCooker.beforeAll();
@@ -33,7 +26,7 @@ describe('Upload file (e2e)', () => {
       imports: [AppModule],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(pgLitle))
+      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
       .overrideProvider(S3ManagerService)
       .useClass(S3ManagerMockService)
       .compile();
@@ -181,6 +174,8 @@ describe('Upload file (e2e)', () => {
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    if (dataCooker) {
+      await dataCooker.afterAll();
+    }
   });
 });

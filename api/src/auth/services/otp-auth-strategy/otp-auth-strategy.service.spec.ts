@@ -8,13 +8,16 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule } from '@nestjs/config';
 import { DataCooker } from '../../../../test/utils/DataCooker/DataCooker';
+import { PrismaAdapterMockFactory } from '../../../../test/utils/mock-services/prisma.adapter.factory';
 import { AccountService } from '../../../account/account.service';
 import { AccountProfileService } from '../../../account-profile/account-profile.service';
 import { NotifierService } from '../../../notifier/notifier.service';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaAdapterFactory } from '../../../prisma/prisma.adapter.factory';
 import { JwtStrategy } from '../../strategies/jwt.strategy';
 import { GqlAuthGuard } from '../../guards/gql-auth.guard';
 import { AccountRoleModule } from '../../../account-role/account-role.module';
+import { FileAssertService } from '../../../files/services/file-assert.service';
 
 describe('OtpAuthStrategyService', () => {
   let otpAuthStrategyService: OtpAuthStrategyService;
@@ -51,10 +54,14 @@ describe('OtpAuthStrategyService', () => {
         OtpCodeGeneratorService,
         AccountService,
         AccountProfileService,
+        FileAssertService,
         JwtStrategy,
         GqlAuthGuard,
       ],
-    }).compile();
+    })
+      .overrideProvider(PrismaAdapterFactory)
+      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .compile();
 
     otpAuthStrategyService = app.get<OtpAuthStrategyService>(
       OtpAuthStrategyService,

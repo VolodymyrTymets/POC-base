@@ -6,6 +6,8 @@ import { AppModule } from '../../src/app.module';
 import { DataCooker } from '../utils/DataCooker/DataCooker';
 import { SignInService } from '../utils/e2e-services/sign-in.service';
 import type { GraphQLResponseType } from '../utils/e2e-services/interfaces/types';
+import { PrismaAdapterMockFactory } from '../utils/mock-services/prisma.adapter.factory';
+import { PrismaAdapterFactory } from '../../src/prisma/prisma.adapter.factory';
 
 describe('Refresh token (e2e)', () => {
   let app: INestApplication<App>;
@@ -19,7 +21,10 @@ describe('Refresh token (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PrismaAdapterFactory)
+      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();

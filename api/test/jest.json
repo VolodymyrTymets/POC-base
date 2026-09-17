@@ -12,5 +12,6 @@
   "moduleNameMapper": {
     "^generated/prisma/(.*)$": "<rootDir>/../generated/prisma/$1",
     "^generated/prisma$": "<rootDir>/../generated/prisma"
-  }
+  },
+  "testTimeout": 10000
 }
