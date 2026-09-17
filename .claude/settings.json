@@ -1,0 +1,35 @@
+{
+  "enabledPlugins": { "apiko-agent@apiko": true },
+  "extraKnownMarketplaces": {
+    "apiko": { "source": { "source": "github", "repo": "apiko-dev/claude-marketplace" } }
+  },
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Read(./**)", "Grep", "Glob",
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git add:*)",
+      "Bash(git switch:*)", "Bash(git commit:*)", "Bash(git fetch:*)", "Bash(git stash:*)",
+      "Bash(pnpm --dir api install)",
+      "Bash(pnpm --dir api exec tsc --noEmit:*)",
+      "Bash(pnpm --dir api run lint:*)",
+      "Bash(pnpm --dir api exec jest --config ./test/jest.json:*)",
+      "Bash(pnpm --dir api exec jest --config ./test/jest-e2e.json:*)",
+      "Bash(pnpm --dir api run build:*)",
+      "Bash(pnpm --dir api run prisma-gen:*)",
+      "Bash(pnpm --dir api run format:*)",
+      "mcp__context7__*",
+      "mcp__serena__*"
+    ],
+    "ask": [
+      "Bash(git push:*)", "Bash(gh pr create:*)", "Bash(gh issue:*)",
+      "Bash(pnpm --dir api add:*)", "Bash(pnpm --dir api remove:*)",
+      "Bash(pnpm --dir api run prisma-migrate:*)", "Bash(pnpm --dir api run reset-db:*)",
+      "Bash(docker:*)", "Bash(docker compose:*)", "Bash(docker-compose:*)",
+      "Edit(api/package.json)",
+      "Edit(api/prisma/schema.prisma)", "Edit(api/prisma/models/**)",
+      "Edit(.github/workflows/**)", "Edit(CLAUDE.md)", "Edit(.claude/**)",
+      "mcp__github__create*", "mcp__github__update*", "mcp__github__merge*"
+    ]
+  },
+  "_apiko_note": "Placeholders filled by /setup from this repo's real command map (pnpm --dir api, since api/ is the pnpm project root, not the repo root). Deny rules come from the plugin; the stack pack adds its own allow/ask entries. bypassPermissions is not allowed in client repos - if IT deploys managed settings, set disableBypassPermissionsMode there."
+}

@@ -1,0 +1,17 @@
+# Extra destructive command patterns for this repo, one JavaScript regex per line, case-insensitive.
+# Read by the guard-destructive hook and blocked with rule C4.
+# Core already blocks: rm -rf outside build dirs, git clean -fdx, DROP/TRUNCATE, schema resets,
+# docker volume destruction, infra CLIs, publish/deploy/submit, non-local database hosts, curl | sh.
+#
+# JS/TS + Prisma additions
+prisma migrate reset
+prisma db push --force-reset
+prisma db push --accept-data-loss
+
+# This repo's own irreversible commands
+reset-db
+docker compose down -v
+docker-compose down -v
+docker volume rm
+flushall
+flushdb
