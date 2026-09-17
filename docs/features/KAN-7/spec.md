@@ -31,10 +31,14 @@ not touch the domain (goals 2/3 unaffected).
     drift). Oxlint's rule set differs, so the violation count will change regardless; this ticket
     documents the new baseline, it does not chase it to zero (rule B4/C1 — same boundary KAN-8 drew for
     the Customer-model bug).
-  - `.github/workflows/agent-checks.yml`. Its suppression-comment guard pattern-matches the literal string
-    `eslint-disable`; Oxlint's native suppression comment is `oxlint-disable` (confirmed via Context7 —
-    oxc.rs docs), which that regex will not catch. CI/pipeline files are only changed in a dedicated PR
-    with a human reviewer (rule T4) — this is flagged as a follow-up, not fixed here.
+  - `.github/workflows/agent-checks.yml`. **Corrected during self-review** — Oxlint actually honors
+    legacy `eslint-disable`/`eslint-disable-line`/`eslint-disable-next-line` comments as real suppressions
+    (empirically verified: removing one from `src/common/pagination.service.ts` makes Oxlint newly flag
+    the line), it does not ignore them as originally assumed. So the guard's existing `eslint-disable`
+    pattern still functions today. The real gap is narrower: it does not *also* match Oxlint's own
+    `oxlint-disable` syntax, which a new suppression written after this ticket might use instead. CI/pipeline
+    files are only changed in a dedicated PR with a human reviewer (rule T4) — flagged as a follow-up
+    (add `oxlint-disable` to the existing pattern), not fixed here.
   - `apps/`, `libs/` in the lint script's glob — both are already-absent directories left over from the
     Nest starter template; kept as-is (no opportunistic cleanup, rule C1).
 
@@ -53,10 +57,17 @@ not touch the domain (goals 2/3 unaffected).
       check-only, not `--fix` — `oxlint --fix` was found to silently strip a load-bearing type cast with
       no diagnostic trail, so auto-fixing moved to a separate, manually-run `lint:fix` script instead of
       the ESLint-era 1:1 `--fix` parity originally planned.
-- [x] AC4 `pnpm --dir api run lint` executes end-to-end: exit 1, 10 real errors (`no-unused-vars` ×8,
-      `no-require-imports` ×1, plus one more `no-unused-vars`), all pre-existing code-quality issues, none
-      introduced by this change. Down from the real ESLint baseline of 581 errors / 39 warnings — expected
-      per the dropped type-aware rules, not a cleanup (see `ADR-0007`).
+- [x] AC4 `pnpm --dir api run lint` executes end-to-end: exit 1, **10 reported errors** with the
+      codebase's existing `eslint-disable` comments in place (Oxlint honors them — see the corrected
+      out-of-scope item above). **24 errors if those suppressions are stripped** (11 `no-unused-vars`,
+      12 `ban-ts-comment` — mostly undescribed `@ts-expect-error`/`@ts-ignore` in
+      `src/common/prismacashing.service.ts`, `src/common/pagination.service.ts`,
+      `src/common/resolver.helpers.ts`, `src/prisma/prisma.caching.service.ts` — and 1
+      `no-require-imports`), verified by temporarily stripping every `eslint-disable*` line in `src`/`test`
+      and re-running. All pre-existing, none introduced by this change; not fixed here (rule B4/C1) but
+      the "10" figure is a suppressed count, not the real one, and both numbers are recorded so nobody
+      mistakes one for the other. Down from the real ESLint baseline of 581 errors / 39 warnings —
+      expected per the dropped type-aware rules, not a cleanup (see `ADR-0007`).
 - [x] AC5 `.claude/rules/js-tooling.md` (rules 4 and 7) and `docs/RUNBOOK.md`'s lint row in "Known
       failures" updated to describe Oxlint, the real (previously-stale) baseline, and the new
       `eslint-disable`-vs-`oxlint-disable` CI guard gap.
@@ -68,7 +79,7 @@ not touch the domain (goals 2/3 unaffected).
 |------|--------------------|-----------|
 | `@oxlint/migrate` doesn't have a 1:1 mapping for an existing ESLint/typescript-eslint rule | Drop the unmapped rule rather than hand-invent an Oxlint equivalent; note any dropped rule in the plan's risk table | assumption |
 | Oxlint reports a different error/warning count than ESLint's current 60/5 baseline | Expected and acceptable — record the real new count, do not tune rules to chase parity (see out-of-scope) | ticket scope |
-| A file currently has an `eslint-disable` comment | Leave it — Oxlint ignores comments it doesn't recognize; only re-suppress with `oxlint-disable` if Oxlint newly flags that exact line, and only with a `WHY:` per rule B3 | assumption |
+| A file currently has an `eslint-disable` comment | **Corrected during self-review**: Oxlint honors it as a real suppression (verified empirically, not "ignores it" as originally assumed) — no action needed, it keeps working. A *new* suppression written after this ticket should use `oxlint-disable*` going forward, still with a `WHY:` per rule B3 | verified |
 
 ## Open questions
 | # | Question | My assumed answer | Needs a human? |

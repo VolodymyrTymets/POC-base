@@ -48,22 +48,47 @@ flat config via `@oxlint/migrate` and hand-reviewed. Three deliberate departures
 ## Consequences
 - Positive: lint runs are dramatically faster (Rust vs. Node); the real baseline count dropped from 581
   errors / 39 warnings (the actual current ESLint baseline as installed today — the `docs/RUNBOOK.md`
-  figure of 60/5 was stale, see that doc's updated entry) to 10 errors / 0 warnings under Oxlint's
+  figure of 60/5 was stale, see that doc's updated entry) to 10 errors reported under Oxlint's
   non-type-aware rule set — expected, since ~23 type-aware rules are no longer enforced, not because the
-  code got cleaner.
+  code got cleaner. **Correction (self-review):** that "10" is the count with existing `eslint-disable`
+  comments still suppressing violations — Oxlint honors them (see below). The real unsuppressed count is
+  **24** (11 `no-unused-vars`, 12 `ban-ts-comment`, 1 `no-require-imports`), verified by stripping every
+  `eslint-disable*` line in `src`/`test` and re-running. All pre-existing, not introduced by this ticket.
 - Accepted cost: type-aware checks (`no-floating-promises`, `no-unsafe-*`, etc.) are not enforced by lint
   anymore. `tsc --noEmit` (already in the command map) still catches outright type errors; it does not
   catch everything the old type-aware ESLint rules did (e.g. an unhandled floating promise that
   type-checks fine). Re-adding `oxlint-tsgolint` is a follow-up, not blocked by anything here.
-- Accepted cost: `.github/workflows/agent-checks.yml`'s suppression-comment guard only pattern-matches the
-  literal string `eslint-disable`; Oxlint's real suppression syntax is `oxlint-disable`/
-  `oxlint-disable-line`/`oxlint-disable-next-line`, which that regex does not catch. Not fixed here — CI
-  files are only changed in a dedicated PR with a human reviewer (rule T4). Flagged in `docs/RUNBOOK.md`.
+- **Correction (self-review): Oxlint honors legacy `eslint-disable`/`eslint-disable-line`/
+  `eslint-disable-next-line` comments as real suppressions — it does not ignore them.** Verified
+  empirically: removing one from `src/common/pagination.service.ts` makes Oxlint newly flag the line it
+  was suppressing. This was initially assumed backwards in this ADR and in `docs/features/KAN-7/spec.md`
+  (both now corrected). Practical effect: `.github/workflows/agent-checks.yml`'s suppression-comment guard,
+  which pattern-matches the literal string `eslint-disable`, **still functions** against every suppression
+  written before this ticket. The real, narrower gap is that the guard does not *also* match Oxlint's own
+  `oxlint-disable`/`oxlint-disable-line`/`oxlint-disable-next-line` syntax, which a suppression written
+  after this ticket might use instead. Not fixed here — CI files are only changed in a dedicated PR with a
+  human reviewer (rule T4). Flagged in `docs/RUNBOOK.md` as "extend the guard's pattern", not "the guard
+  matches the wrong tool."
 - Risk carried forward: Oxlint's `--fix` (via the new `lint:fix` script) is not type-aware and can produce
   a syntactically-valid but type-incorrect diff with no diagnostic explaining why, as seen on
   `account.resolver.ts`. Anyone running `lint:fix` should re-run `tsc --noEmit` before trusting the diff,
   the same discipline this ticket's implementation used to catch it.
+- Accepted cost: no automated formatting check remains in the command map. Before this ticket,
+  `eslint-plugin-prettier` surfaced Prettier drift as a `lint` error (so `pnpm --dir api run lint` would
+  fail on unformatted code); dropping that bridge (Consequence/Decision point 2) means `pnpm --dir api run
+  format` (`prettier --write`) is a writer, not a verifier, and nothing in the command map now fails on
+  unformatted code. Not fixed here (would need a new `format:check` script — out of scope for a linter
+  swap) — flagged for a human to decide whether it's an accepted gap or its own follow-up ticket.
+- Minor, noted for future maintainers: `.oxlintrc.json` sets `"categories": { "correctness": "off" }` and
+  re-enables ~57 individual rules by name, faithfully porting `eslint:recommended`'s fixed rule list. The
+  tradeoff is that a correctness rule Oxlint adds in a future minor version won't turn on automatically —
+  the config stops tracking the tool's own defaults. Accepted for a faithful migration; revisit if the repo
+  later wants to just trust `"correctness": "error"` instead of an explicit list.
+- Minor: `oxlint src test` lints `.js` files too (Oxlint doesn't restrict by extension the way the old glob
+  `"{src,apps,libs,test}/**/*.ts"` did), which is where `test/jest.setup.js`'s `no-require-imports` error in
+  the AC4 baseline comes from — a real, newly-surfaced pre-existing issue, not a bug in the migration.
 
 ## Revisit when
-A future ticket wants type-aware lint parity back (add `oxlint-tsgolint`, `--type-aware`), or the CI
-suppression-guard gap above gets its own ticket and dedicated PR.
+A future ticket wants type-aware lint parity back (add `oxlint-tsgolint`, `--type-aware`), the CI
+suppression-guard gap above gets its own ticket and dedicated PR, or a formatting-check gap is judged worth
+closing.
