@@ -53,6 +53,10 @@ These hold for NestJS, Express and Fastify alike. The framework file next to thi
 
 22. Unit tests with `DataCooker` against a real PGlite database (rule P5) — never mock Prisma. Integration/e2e through the real Nest app with `supertest`.
 
+## Code organization
+
+23. **No loose functions in a resolver or service file.** Every piece of logic that lives in `*.resolver.ts`/`*.service.ts` is a method on that resolver's/service's class — never a module-level `function` declared alongside it, even a small, pure helper with no dependencies of its own. Keeps everything constructor-injectable and mockable the same way (rule 1), and keeps the class the one unit of reuse per file instead of a class plus a loose export. A helper that logically belongs to a class becomes a method on it (`private` if nothing outside the class calls it), not a sibling function in the same file.
+
 ## Verification (rule B1)
 
 A backend change is done only when the operation was **actually called** — a GraphQL operation against a running server, or an e2e test through the real transport — with the real response captured in the evidence block. A passing unit test is not verification of an endpoint.
