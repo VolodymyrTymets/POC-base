@@ -32,6 +32,12 @@ approval (rule C2). Two upload and two download options were weighed at plan app
 3. `File.key` (the S3 object key) is dropped from the schema — nothing reads it once `S3ManagerService` is
    gone. `S3ManagerService`, `IS3ManagerService`, and the `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`,
    `aws-sdk`, `aws-sdk-v3-nest` dependencies are deleted outright, not feature-flagged.
+   **Rollback/data-loss note (self-review):** this migration's `DROP COLUMN "key"` is destructive and has
+   no backfill — an existing environment with `File` rows loses its only pointer to their S3 objects on
+   deploy. Those rows keep `content: NULL` forever, so `publicUrl` resolves to `null` for every
+   pre-migration file, with no way back short of restoring from a backup taken before this migration ran.
+   Harmless in this repo today (no staging/prod environment exists, `ARCHITECTURE.md`), but a fork that
+   already has real `File` data must export/backfill before applying this migration, not after.
 4. `createFile` returns `FileEntity` directly instead of the `CreateFileEntity { file, uploadUrl }`
    wrapper, which is deleted — `uploadUrl` has no meaning without a presigned URL, and a one-field wrapper
    has no remaining purpose once it's gone. This matches `updateFile`'s and `file`'s return shape already.
@@ -50,7 +56,12 @@ approval (rule C2). Two upload and two download options were weighed at plan app
   flow to work end to end — one fewer piece of infrastructure to provision (`BUSINESS_MODEL.md` goal 1).
 - Accepted cost: base64 encoding adds ~33% overhead over raw bytes, both in the mutation payload and in
   `publicUrl`'s response. Acceptable at the existing 10MB `FILE_MAX_SIZE` default for a POC base; not
-  acceptable at arbitrary scale.
+  acceptable at arbitrary scale. **Correction (self-review):** this is only true because `api/src/main.ts`
+  now sets the GraphQL JSON body-parser limit explicitly from `FILE_MAX_SIZE` (×1.4 for base64 + envelope
+  overhead) — Nest/Express's undocumented 100kb default would otherwise have rejected almost any real
+  upload with a raw HTTP 413 before `FileAssertService` ever ran, since file bytes never touched the
+  request body at all under the old S3 presigned-URL flow. Caught in self-review, not by a test, because
+  every test payload was under 20 bytes.
 - Accepted cost: the entire file is buffered in memory on both the write path (`Buffer.from(...)`) and the
   read path (building the `data:` URI) — no streaming. Fine at POC file sizes; a real constraint if this
   base is ever asked to handle large uploads.

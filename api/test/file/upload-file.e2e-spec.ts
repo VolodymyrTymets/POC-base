@@ -65,6 +65,19 @@ describe('Upload file (e2e)', () => {
     expect(file.publicUrl).toEqual(`data:image/png;base64,${content}`);
   });
 
+  it('Should reject non-base64 content at the validation boundary', async () => {
+    const phoneNumber = '+12125551231';
+    const { accessToken } = await signInService.signInOtp(phoneNumber);
+
+    const response = await fileE2EService.createFileMutation(
+      accessToken,
+      { name: 'bad.png', content: 'not-base64!!!' },
+      true,
+    );
+
+    expect(response.body.errors).toBeDefined();
+  });
+
   it('Should update file, attaching content on a second call', async () => {
     const phoneNumber = '+12125551231';
     const fileName = 'test1.png';
@@ -95,6 +108,7 @@ describe('Upload file (e2e)', () => {
       {
         status: FileStatus.FILE_STATUS_UPLOAD_COMPLETED,
         content,
+        mimeType: 'image/png',
       },
     );
     const file3 = uploadingResponse1.body.data.updateFile;

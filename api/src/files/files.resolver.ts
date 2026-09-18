@@ -5,7 +5,9 @@ import {
   Query,
   Args,
   Mutation,
+  Info,
 } from '@nestjs/graphql';
+import type { GraphQLResolveInfo, SelectionNode } from 'graphql';
 
 import { FileEntity } from './entities/file.entity';
 import { FilesService } from './files.service';
@@ -57,13 +59,14 @@ export class FilesResolver {
   async file(
     @Args('fileId') fileId: string,
     @CurrentAccount() currentAccount: AuthAccount,
+    @Info() info: GraphQLResolveInfo,
   ): Promise<FileEntity | null> {
     await this.fileAssertService.assertFileAccessByAccount(
       fileId,
       currentAccount.accountId,
     );
 
-    return this.filesService.findFile(fileId);
+    return this.filesService.findFile(fileId, wantsPublicUrl(info));
   }
 
   @ResolveField(() => String)
@@ -73,4 +76,16 @@ export class FilesResolver {
     }
     return `data:${file.mimeType};base64,${Buffer.from(file.content).toString('base64')}`;
   }
+}
+
+/**
+ * `content` (bytea, up to FILE_MAX_SIZE) is only worth selecting from Prisma
+ * when the client actually requested `publicUrl` - see ADR-0010.
+ */
+function wantsPublicUrl(info: GraphQLResolveInfo): boolean {
+  const selections = info.fieldNodes[0]?.selectionSet?.selections ?? [];
+  return selections.some(
+    (selection: SelectionNode) =>
+      selection.kind === 'Field' && selection.name.value === 'publicUrl',
+  );
 }

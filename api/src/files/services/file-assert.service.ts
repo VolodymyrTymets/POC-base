@@ -29,6 +29,12 @@ export class FileAssertService {
     if (size && size > this.max_size) {
       throw new ForbiddenException();
     }
+    // Bytes are stored and served back as a data:<mimeType>;base64,... URI
+    // (ADR-0010), so a mimeType is required whenever content is present -
+    // the allowlist below would otherwise be silently bypassable.
+    if (content && !mimeType) {
+      throw new ForbiddenException();
+    }
     if (mimeType && !this.assertMimeType(mimeType)) {
       throw new ForbiddenException();
     }

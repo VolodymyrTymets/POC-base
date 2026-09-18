@@ -66,6 +66,9 @@ export class FileE2EService {
     expectError = false,
   ) {
     const contentArg = input.content ? `content: "${input.content}",` : '';
+    const mimeTypeArg = input.mimeType
+      ? `mimeType: "${input.mimeType}",`
+      : '';
     const response = (await request(this.app.getHttpServer())
       .post('/graphql')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -74,6 +77,7 @@ export class FileE2EService {
           updateFile(fileId: "${fileId}", input: {
             status: ${input.status}
             ${contentArg}
+            ${mimeTypeArg}
           }) { id, status, publicUrl }
         }`,
       })
