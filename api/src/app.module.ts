@@ -3,13 +3,9 @@ import { APP_FILTER } from '@nestjs/core';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { ConfigModule } from '@nestjs/config';
-import { CacheModule } from '@nestjs/cache-manager';
-import KeyvRedis from '@keyv/redis';
-import { Keyv } from 'keyv';
 import { join } from 'path';
 
 import { BullModule } from '@nestjs/bullmq';
-import { CacheableMemory } from 'cacheable';
 import { SentryModule } from '@sentry/nestjs/setup';
 import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { AppController } from './app.controller';
@@ -43,20 +39,6 @@ import { FilesModule } from './files/files.module';
               },
             }
           : { req: context?.req },
-    }),
-    CacheModule.registerAsync({
-      useFactory: async () => {
-        return {
-          stores: [
-            new Keyv({
-              store: new CacheableMemory({ ttl: 60000, lruSize: 5000 }),
-            }),
-            new KeyvRedis(
-              `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
-            ),
-          ],
-        };
-      },
     }),
     BullModule.forRoot({
       connection: {
