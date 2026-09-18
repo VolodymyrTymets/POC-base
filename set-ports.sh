@@ -47,6 +47,11 @@ echo "Writing $PWD/.env (docker-compose host-port interpolation)..."
 set_kv "$PWD/.env" API_PORT "$API_PORT"
 set_kv "$PWD/.env" POSTGRES_PORT "$POSTGRES_PORT"
 set_kv "$PWD/.env" REDIS_PORT "$REDIS_PORT"
+# web-app/web-admin map host==container port (both driven by this same var,
+# see docker-compose.yml), so the root .env needs these too, not just each
+# app's own .env (which the container's Vite process reads via env_file).
+set_kv "$PWD/.env" WEB_APP_PORT "$WEB_APP_PORT"
+set_kv "$PWD/.env" WEB_ADMIN_PORT "$WEB_ADMIN_PORT"
 
 echo "Writing $PWD/api/.env (local, non-docker api run)..."
 set_kv "$PWD/api/.env" PORT "$API_PORT"
