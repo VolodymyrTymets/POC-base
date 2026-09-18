@@ -8,10 +8,8 @@ import {
 } from '@nestjs/graphql';
 
 import { FileEntity } from './entities/file.entity';
-import { S3ManagerService } from './services/s3-manager.service';
 import { FilesService } from './files.service';
 import { CreateFileInput } from './dto/create-file.input';
-import { CreateFileEntity } from './entities/create-file.entity';
 import { UseGuards } from '@nestjs/common';
 import { GqlAuthGuard } from '../auth/guards/gql-auth.guard';
 import { CurrentAccount } from '../decorators/current-account.decorator';
@@ -22,19 +20,18 @@ import { UpdateFileInput } from './dto/update-file.input';
 @Resolver(() => FileEntity)
 export class FilesResolver {
   constructor(
-    private readonly s3ManagerService: S3ManagerService,
     private readonly filesService: FilesService,
     private readonly fileAssertService: FileAssertService,
   ) {}
 
-  @Mutation(() => CreateFileEntity, {
-    description: 'Create a new file. Generate upload URL.',
+  @Mutation(() => FileEntity, {
+    description: 'Create a new file, optionally with its content.',
   })
   @UseGuards(GqlAuthGuard)
   createFile(
     @Args('input') input: CreateFileInput,
     @CurrentAccount() currentAccount: AuthAccount,
-  ): Promise<CreateFileEntity> {
+  ): Promise<FileEntity> {
     this.fileAssertService.assertFileInput(input);
     return this.filesService.createFile(input, currentAccount);
   }
@@ -71,9 +68,9 @@ export class FilesResolver {
 
   @ResolveField(() => String)
   publicUrl(@Parent() file: FileEntity) {
-    if (!file.key) {
+    if (!file.content || !file.mimeType) {
       return null;
     }
-    return this.s3ManagerService.getPublicUrl(file.key);
+    return `data:${file.mimeType};base64,${Buffer.from(file.content).toString('base64')}`;
   }
 }

@@ -72,8 +72,10 @@ describe('FilesService', () => {
       );
 
       expect(file.status).toBe(FileStatus.FILE_STATUS_UPLOAD_COMPLETED);
-      expect(file.content).not.toBeNull();
-      expect(Buffer.from(file.content as Buffer).equals(original)).toBe(true);
+      if (!file.content) {
+        throw new Error('expected file.content to be set');
+      }
+      expect(Buffer.from(file.content).equals(original)).toBe(true);
     });
   });
 
@@ -91,9 +93,10 @@ describe('FilesService', () => {
       });
 
       expect(updated.status).toBe(FileStatus.FILE_STATUS_UPLOAD_COMPLETED);
-      expect(Buffer.from(updated.content as Buffer).equals(original)).toBe(
-        true,
-      );
+      if (!updated.content) {
+        throw new Error('expected updated.content to be set');
+      }
+      expect(Buffer.from(updated.content).equals(original)).toBe(true);
     });
   });
 });

@@ -22,7 +22,7 @@ export class FileEntity {
   @Field(() => Date)
   createdAt!: Date;
 
-  key?: string | null;
+  content?: Uint8Array | null;
 
   @Field(() => String, { nullable: true, description: 'public url' })
   publicUrl?: string;
