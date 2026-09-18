@@ -7,7 +7,7 @@ import { CreateFileInput } from '../../../src/files/dto/create-file.input';
 import { UpdateFileInput } from '../../../src/files/dto/update-file.input';
 
 type CreateFileResponse = {
-  createFile: { uploadUrl: string; file: FileEntity };
+  createFile: FileEntity;
 };
 type UpdateFileResponse = {
   updateFile: FileEntity;
@@ -39,6 +39,7 @@ export class FileE2EService {
     input: CreateFileInput,
     expectError = false,
   ) {
+    const contentArg = input.content ? `content: "${input.content}",` : '';
     const response = (await request(this.app.getHttpServer())
       .post('/graphql')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -48,7 +49,8 @@ export class FileE2EService {
             name: "${input.name}",
             mimeType: "image/png",
             size: 1000000,
-          }) { uploadUrl, file { id name mimeType size status } }
+            ${contentArg}
+          }) { id name mimeType size publicUrl }
         }`,
       })
       .expect(200)) as GraphQLResponseType<CreateFileResponse>;
@@ -63,14 +65,19 @@ export class FileE2EService {
     input: UpdateFileInput,
     expectError = false,
   ) {
+    const contentArg = input.content ? `content: "${input.content}",` : '';
+    const mimeTypeArg = input.mimeType
+      ? `mimeType: "${input.mimeType}",`
+      : '';
     const response = (await request(this.app.getHttpServer())
       .post('/graphql')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         query: `mutation {
           updateFile(fileId: "${fileId}", input: {
-            status: ${input.status}
-          }) { id, status }
+            ${contentArg}
+            ${mimeTypeArg}
+          }) { id, publicUrl }
         }`,
       })
       .expect(200)) as GraphQLResponseType<UpdateFileResponse>;
@@ -85,8 +92,34 @@ export class FileE2EService {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         query: `query {
-          file(fileId: "${fileId}") { id, name, mimeType, size, status, publicUrl }
+          file(fileId: "${fileId}") { id, name, mimeType, size, publicUrl }
         }`,
+      })
+      .expect(200)) as GraphQLResponseType<{
+      file: FileEntity;
+    }>;
+
+    this.assertError<{ file: FileEntity }>(response, expectError);
+
+    return response;
+  }
+
+  /** Requests `publicUrl` through a fragment spread, not a direct field
+   * selection - proves the field-selection helper in FilesResolver handles
+   * fragments (see files.resolver.ts's wantsPublicUrl). */
+  async fileQueryViaFragment(
+    accessToken: string,
+    fileId: string,
+    expectError = false,
+  ) {
+    const response = (await request(this.app.getHttpServer())
+      .post('/graphql')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        query: `query {
+          file(fileId: "${fileId}") { id ...FileCard }
+        }
+        fragment FileCard on FileEntity { publicUrl }`,
       })
       .expect(200)) as GraphQLResponseType<{
       file: FileEntity;

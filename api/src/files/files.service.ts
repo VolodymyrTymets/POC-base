@@ -1,50 +1,59 @@
 import { Injectable } from '@nestjs/common';
-import { FileStatus, Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFileInput } from './dto/create-file.input';
-import { S3ManagerService } from './services/s3-manager.service';
+import { UpdateFileInput } from './dto/update-file.input';
 import { AuthAccount } from '../auth/strategies/jwt.strategy';
 
 @Injectable()
 export class FilesService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly s3ManagerService: S3ManagerService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async createFile(input: CreateFileInput, currentAccount: AuthAccount) {
-    const file = await this.prisma.file.create({
+  createFile(input: CreateFileInput, currentAccount: AuthAccount) {
+    const content = input.content
+      ? Buffer.from(input.content, 'base64')
+      : undefined;
+
+    return this.prisma.file.create({
       data: {
         name: input.name,
-        size: input.size,
+        // Trust the decoded bytes over the client-declared size once content
+        // is present - the two can otherwise disagree (rule D5).
+        size: content ? content.byteLength : input.size,
         mimeType: input.mimeType,
         createdById: currentAccount.accountId,
-        status: FileStatus.FILE_STATUS_CREATED,
+        content,
       },
     });
-
-    const fileKey = this.s3ManagerService.generateKey(file.id, file.name || '');
-    await this.prisma.file.update({
-      where: { id: file.id },
-      data: { key: fileKey },
-    });
-
-    const uploadUrl = await this.s3ManagerService.getSignedUrl(fileKey);
-
-    return {
-      file,
-      uploadUrl,
-    };
   }
 
-  updateFile(fileId: string, data: Prisma.FileUpdateInput) {
+  updateFile(fileId: string, input: UpdateFileInput) {
+    const content = input.content
+      ? Buffer.from(input.content, 'base64')
+      : undefined;
+
     return this.prisma.file.update({
       where: { id: fileId },
-      data: { ...data, updatedAt: new Date() },
+      data: {
+        name: input.name,
+        size: content ? content.byteLength : input.size,
+        mimeType: input.mimeType,
+        content,
+        updatedAt: new Date(),
+      },
     });
   }
 
-  findFile(fileId: string) {
-    return this.prisma.file.findUnique({ where: { id: fileId } });
+  findFile(fileId: string, includeContent = false) {
+    return this.prisma.file.findUnique({
+      where: { id: fileId },
+      select: {
+        id: true,
+        name: true,
+        mimeType: true,
+        size: true,
+        createdAt: true,
+        content: includeContent,
+      },
+    });
   }
 }

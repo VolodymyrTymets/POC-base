@@ -1,6 +1,4 @@
 import { ObjectType, Field } from '@nestjs/graphql';
-import { registerEnumType } from '@nestjs/graphql';
-import { FileStatus } from '../../../generated/prisma/enums';
 
 @ObjectType()
 export class FileEntity {
@@ -16,18 +14,11 @@ export class FileEntity {
   @Field(() => Number, { nullable: true })
   size?: number | null;
 
-  @Field(() => FileStatus)
-  status!: FileStatus;
-
   @Field(() => Date)
   createdAt!: Date;
 
-  key?: string | null;
+  content?: Uint8Array | null;
 
   @Field(() => String, { nullable: true, description: 'public url' })
   publicUrl?: string;
 }
-
-registerEnumType(FileStatus, {
-  name: 'FileStatus',
-});

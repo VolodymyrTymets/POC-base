@@ -15,7 +15,8 @@ base — the pieces a new POC would otherwise have to rebuild from scratch.
 3. **Test base** — the testing setup (PGlite + `DataCooker`, real-DB unit/e2e tests) must keep working and stay easy to extend, since a new POC will lean on it from day one.
 
 ## Non-negotiables (never trade these for speed)
-- Real SMS/email sending and a real S3 bucket must actually be used for those integrations, not mocked/stubbed out, even under time pressure — this base is meant to prove the real integration path works, not a facade over it. (Tests are the exception: they intentionally mock these at the network boundary, per `.claude/rules/testing-js.md`.)
+- Real SMS/email sending must actually be used for those integrations, not mocked/stubbed out, even under time pressure — this base is meant to prove the real integration path works, not a facade over it. (Tests are the exception: they intentionally mock these at the network boundary, per `.claude/rules/testing-js.md`.)
+- **(Superseded 2026-09-18, KAN-6)** The S3-bucket non-negotiable above is dropped, not narrowed: file storage moved from S3 to PostgreSQL (see the ADR KAN-6 adds under `docs/decisions/`). A POC forked from this base after KAN-6 no longer proves an S3 integration path — if a future client engagement needs real object storage, that is a decision for that fork, not an assumption this base still makes.
 
 ## Explicitly out of scope (this phase)
 - A specific client-facing product or business domain — none exists yet; the domain objects (`Account`, `Notification`, `File`, etc.) are deliberately generic.
@@ -27,7 +28,7 @@ base — the pieces a new POC would otherwise have to rebuild from scratch.
 |-----------|-----------------|---------|
 | Add a feature to `api/` that's genuinely generic (e.g. improve the auth pipeline) vs. one that's specific to a hypothetical future client | Build the generic version, keep client-specific logic out of this repo | goal 1 — this repo is the reusable base, not a specific product (rule G2) |
 | Polish the seed/mock data vs. ship a new scaffolding piece faster | Prefer shipping the scaffolding piece; keep mocks "good enough" | goal 1 over goal 3 |
-| A quick fix for a broken integration test vs. a quick mock that skips the real SMS/S3 call | Fix it against the real integration (or its sandbox) | non-negotiable above |
+| A quick fix for a broken integration test vs. a quick mock that skips the real SMS call | Fix it against the real integration (or its sandbox) | non-negotiable above |
 
 ## Soft values
 Optimize for a new POC being clonable and understandable in under a day — favor obvious, conventional
