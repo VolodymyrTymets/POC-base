@@ -9,7 +9,7 @@ model File {
   updatedAt   DateTime?  @updatedAt
   deleted     Boolean    @default(false)
   name        String?
-  key         String?
+  content     Bytes?
   mimeType    String?
   size        Int        @default(0)
   status      FileStatus @default(FILE_STATUS_CREATED)
