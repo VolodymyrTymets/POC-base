@@ -7,9 +7,9 @@ services:
       context: ./api
       target: development
     ports:
-      - "${API_PORT:-3001}:3001"
+      - "${EXPOSE_API_PORT:-3001}:3001"
     env_file:
-      - .env.development
+      - api/.env.development
     depends_on:
       postgres:
         condition: service_healthy
@@ -24,7 +24,7 @@ services:
       context: ./api
       target: worker
     env_file:
-      - .env.development
+      - api/.env.development
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,9 +39,9 @@ services:
     image: postgis/postgis:16-3.4
     restart: always
     env_file:
-      - .env.development
+      - api/.env.development
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${EXPOSE_POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -57,7 +57,7 @@ services:
     image: redis:7-alpine
     restart: always
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${EXPOSE_REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -74,13 +74,9 @@ services:
       context: ./web
       target: app-dev
     ports:
-      - "${WEB_APP_PORT:-5173}:${WEB_APP_PORT:-5173}"
-    # WEB_APP_PORT here is the single source of truth for this container's listen
-    # port (env vars win over env_file, so it can't diverge from the host mapping
-    # above); env_file is for VITE_* vars only (e.g. VITE_GRAPHQL_URL) and is
-    # optional since a fresh clone has no local web/packages/app/.env yet.
+      - "${EXPOSE_WEB_APP_PORT:-5173}:${WEB_APP_PORT:-5173}"
     environment:
-      WEB_APP_PORT: "${WEB_APP_PORT:-5173}"
+      WEB_APP_PORT: "5173"
     env_file:
       - path: web/packages/app/.env
         required: false
@@ -99,7 +95,7 @@ services:
       context: ./web
       target: admin-dev
     ports:
-      - "${WEB_ADMIN_PORT:-5174}:${WEB_ADMIN_PORT:-5174}"
+      - "${EXPOSE_WEB_ADMIN_PORT:-5174}:${WEB_ADMIN_PORT:-5174}"
     environment:
       WEB_ADMIN_PORT: "${WEB_ADMIN_PORT:-5174}"
     env_file:
