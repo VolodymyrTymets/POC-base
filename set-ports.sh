@@ -19,7 +19,7 @@ usage() {
   echo "externally-reachable ports for this workflow. Container-internal ports never" >&2
   echo "change (3001/5432/6379/5173/5174, fixed in docker-compose.yml) — only the" >&2
   echo "host side varies, via EXPOSE_* vars. Writes into ./.env, api/.env," >&2
-  echo "web/packages/app/.env and web/packages/admin/.env." >&2
+  echo "web/packages/app/.env.development and web/packages/admin/.env.development." >&2
   exit 1
 }
 
@@ -96,12 +96,12 @@ set_kv "$PWD/api/.env" PORT "$API_PORT"
 set_kv "$PWD/api/.env" REDIS_PORT "$REDIS_PORT"
 set_url_port "$PWD/api/.env" DATABASE_URL "$POSTGRES_PORT"
 
-echo "Writing $PWD/web/packages/app/.env..."
-set_kv "$PWD/web/packages/app/.env" WEB_APP_PORT "$WEB_APP_PORT"
-set_kv "$PWD/web/packages/app/.env" VITE_GRAPHQL_URL "http://localhost:$API_PORT/graphql"
+echo "Writing $PWD/web/packages/app/.env.development..."
+set_kv "$PWD/web/packages/app/.env.development" WEB_APP_PORT "$WEB_APP_PORT"
+set_kv "$PWD/web/packages/app/.env.development" VITE_GRAPHQL_URL "http://localhost:$API_PORT/graphql"
 
-echo "Writing $PWD/web/packages/admin/.env..."
-set_kv "$PWD/web/packages/admin/.env" WEB_ADMIN_PORT "$WEB_ADMIN_PORT"
-set_kv "$PWD/web/packages/admin/.env" VITE_GRAPHQL_URL "http://localhost:$API_PORT/graphql"
+echo "Writing $PWD/web/packages/admin/.env.development..."
+set_kv "$PWD/web/packages/admin/.env.development" WEB_ADMIN_PORT "$WEB_ADMIN_PORT"
+set_kv "$PWD/web/packages/admin/.env.development" VITE_GRAPHQL_URL "http://localhost:$API_PORT/graphql"
 
 echo "Done."

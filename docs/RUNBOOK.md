@@ -60,7 +60,9 @@ docker compose -p <a-project-name-per-worktree> up -d
 Still just `docker compose up -d` (no `-p`) for a worktree that's fine using the default ports
 (3001/5432/6379/5173/5174) — nothing changes there if `set-ports.sh` is never run. `web/` now has its own
 Docker path too (`web-app`/`web-admin` services, ADR-0009) — `pnpm --dir web/packages/app run dev` still
-works standalone if you don't want it in Docker; both read the same `web/packages/*/.env`.
+works standalone if you don't want it in Docker; both read the same `web/packages/*/.env.development`
+(Vite's own mode-specific convention — loaded automatically for `vite`/`vite dev`'s default "development"
+mode, no `vite.config.ts` change needed).
 
 All six services come up cleanly with a plain `docker compose up -d` (the build-context and Postgres
 healthcheck db-name bugs that used to block `api`/`worker` here are fixed — see "Known failures" below).

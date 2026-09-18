@@ -78,7 +78,7 @@ services:
     environment:
       WEB_APP_PORT: "5173"
     env_file:
-      - path: web/packages/app/.env
+      - path: web/packages/app/.env.development
         required: false
     volumes:
       - ./web:/usr/src/app
@@ -99,7 +99,7 @@ services:
     environment:
       WEB_ADMIN_PORT: "5174"
     env_file:
-      - path: web/packages/admin/.env
+      - path: web/packages/admin/.env.development
         required: false
     volumes:
       - ./web:/usr/src/app

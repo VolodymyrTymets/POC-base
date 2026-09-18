@@ -99,5 +99,18 @@ brings up all six services for real, which the two-stack proof below relies on.
 - Follow-ups: KAN-4 (Customer-model bug, unrelated to any of the above) remains open, tracked separately
   in `docs/ARCHITECTURE.md`.
 
+**Addendum (2026-09-18, same day, user request):** `web/packages/{app,admin}/.env` renamed to
+`.env.development` (and the tracked `.env.example` templates to `.env.development.example`), matching
+`api/`'s existing `.env`/`.env.development` split and, more importantly, Vite's own native
+mode-specific env file convention — `loadEnv(mode, envDir, '')` in `vite.config.ts` already resolves
+`.env.development` automatically when `mode` is `development` (the default for `vite`/`vite dev`), so
+this needed no `vite.config.ts` change at all, just updating every other reference to the old filename
+(`docker-compose.yml`'s `env_file`, `set-ports.sh`'s write targets, `move-env.sh`'s copy list). Verified:
+`pnpm run dev` picks up `WEB_APP_PORT` from the renamed file with zero config changes; the Docker path
+(`env_file: web/packages/app/.env.development`) does too. `web/.gitignore`'s negation only excepted the
+exact name `.env.example`, so the new `.env.development.example` was silently swallowed by `.env.*` until
+a second negation line (`!.env.development.example`) was added — the same class of gap the root
+`.gitignore` was fixed for earlier in this ticket, just missed in `web/`'s copy at the time.
+
 ## Revisit when
 `web/` gains a real production build target (a client fork needs to deploy it).
