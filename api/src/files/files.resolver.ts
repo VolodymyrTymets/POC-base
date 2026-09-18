@@ -80,12 +80,28 @@ export class FilesResolver {
 
 /**
  * `content` (bytea, up to FILE_MAX_SIZE) is only worth selecting from Prisma
- * when the client actually requested `publicUrl` - see ADR-0010.
+ * when the client actually requested `publicUrl` - see ADR-0010. Walks
+ * fragment spreads and inline fragments too (not just direct field
+ * selections), the same way `GraphToPrisma` resolves `info.fragments` for
+ * this repo's relation-selection convention (rule 9), so a fragment-based
+ * client (e.g. graphql-codegen's client-preset, ADR-0008) doesn't silently
+ * get `publicUrl: null` for a file that actually has content.
  */
 function wantsPublicUrl(info: GraphQLResolveInfo): boolean {
-  const selections = info.fieldNodes[0]?.selectionSet?.selections ?? [];
-  return selections.some(
-    (selection: SelectionNode) =>
-      selection.kind === 'Field' && selection.name.value === 'publicUrl',
-  );
+  const visit = (selections: readonly SelectionNode[]): boolean =>
+    selections.some((selection) => {
+      if (selection.kind === 'Field') {
+        return selection.name.value === 'publicUrl';
+      }
+      if (selection.kind === 'FragmentSpread') {
+        const fragment = info.fragments[selection.name.value];
+        return fragment
+          ? visit(fragment.selectionSet.selections)
+          : false;
+      }
+      // InlineFragment
+      return visit(selection.selectionSet.selections);
+    });
+
+  return visit(info.fieldNodes[0]?.selectionSet?.selections ?? []);
 }

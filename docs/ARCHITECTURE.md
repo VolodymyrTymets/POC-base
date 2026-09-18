@@ -53,12 +53,15 @@ Resolver (`@UseGuards(GqlAuthGuard)`) → service extending `PrismaCashingServic
 
 ### 3. File upload
 Client calls `createFile` mutation with an optional base64 `content` → `FileAssertService` validates the
-input, including the decoded content's byte length against `FILE_MAX_SIZE` → `FilesService` stores the
-decoded bytes directly in the `File.content` column (Postgres, ADR-0010) and sets
-`status: FILE_STATUS_UPLOAD_COMPLETED` when content was provided, else `FILE_STATUS_CREATED` — a
-follow-up `updateFile` mutation (re-checked by `FileAssertService.assertUpdateFile`) can attach `content`
-and flip the status when a client creates the record first. `FileEntity.publicUrl` is computed from the
-stored bytes as a `data:<mimeType>;base64,<content>` URI — there is no external storage call in this flow.
+input (decoded content's byte length against `FILE_MAX_SIZE`; `mimeType` is required whenever `content`
+is present, falling back to the record's stored `mimeType` on an update that omits it) → `FilesService`
+stores the decoded bytes directly in the `File.content` column (Postgres, ADR-0010) — a follow-up
+`updateFile` mutation (re-checked by `FileAssertService.assertUpdateFile`) can attach `content` when a
+client creates the record first. There is no separate upload-status field (`FileStatus` was removed,
+ADR-0010's amendment) — presence of `content` is the state. `FileEntity.publicUrl` is computed from the
+stored bytes as a `data:<mimeType>;base64,<content>` URI (selected from Prisma only when the query's
+selection set actually requests it, including through fragments) — there is no external storage call in
+this flow.
 
 ## External integrations
 | Service | Purpose | Failure mode | Sandbox available? |

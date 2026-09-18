@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { FileStatus } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFileInput } from './dto/create-file.input';
 import { UpdateFileInput } from './dto/update-file.input';
@@ -23,9 +22,6 @@ export class FilesService {
         mimeType: input.mimeType,
         createdById: currentAccount.accountId,
         content,
-        status: content
-          ? FileStatus.FILE_STATUS_UPLOAD_COMPLETED
-          : FileStatus.FILE_STATUS_CREATED,
       },
     });
   }
@@ -41,10 +37,6 @@ export class FilesService {
         name: input.name,
         size: content ? content.byteLength : input.size,
         mimeType: input.mimeType,
-        // Attaching content always means the upload is complete, regardless
-        // of what status the client passed alongside it - status and content
-        // must not be able to disagree.
-        status: content ? FileStatus.FILE_STATUS_UPLOAD_COMPLETED : input.status,
         content,
         updatedAt: new Date(),
       },
@@ -59,7 +51,6 @@ export class FilesService {
         name: true,
         mimeType: true,
         size: true,
-        status: true,
         createdAt: true,
         content: includeContent,
       },

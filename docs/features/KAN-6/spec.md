@@ -28,35 +28,44 @@ day one.
 - **out (explicit):**
   - Streaming/multipart upload or a REST download endpoint — out of scope per the plan-approval decision
     (base64-in-GraphQL was chosen over adding a first REST route to this GraphQL-only API).
-  - Changing `FileStatus`'s upload-lifecycle state machine (`CREATED` → `UPLOAD_IN_PROGRESS` →
-    `UPLOAD_COMPLETED`/`FAILED`) — kept as-is; only *how* bytes move is changing, not the status contract.
+  - ~~Changing `FileStatus`'s upload-lifecycle state machine...~~ **Amended, second self-review round:**
+    `FileStatus` is removed entirely, not kept as-is — see `docs/decisions/ADR-0010-postgres-file-storage.md`'s
+    "Amendment" section. Once content arrives synchronously (this ticket's whole point), presence of
+    `content` already carries the state a separate field would have duplicated.
   - Any change to `AccountProfile`'s use of `File` (avatar) beyond what follows automatically from the
     `File` contract change.
   - File size/mime-type limits beyond the existing `FileAssertService` checks (`FILE_MAX_SIZE`,
     `FILE_ALLOWED_MIME_TYPES`) — unchanged.
 
 ## Acceptance criteria
-- [ ] AC1 `S3ManagerService`, `IS3ManagerService`, and every `@aws-sdk/*`/`aws-sdk`/`aws-sdk-v3-nest`
+- [x] AC1 `S3ManagerService`, `IS3ManagerService`, and every `@aws-sdk/*`/`aws-sdk`/`aws-sdk-v3-nest`
       reference are removed from `api/src/files/**` and `api/package.json`.
-- [ ] AC2 `createFile` accepts an optional base64 `content` input; when provided, the bytes are persisted
-      to the `File.content` column and `FileStatus` moves to `FILE_STATUS_UPLOAD_COMPLETED` in the same
-      call (no separate "upload" step against external storage remains meaningful).
-- [ ] AC3 `updateFile` can also accept `content` (matching `CreateFileInput`, which it already extends),
-      to cover a client that creates the record first and attaches bytes in a second call.
-- [ ] AC4 The `publicUrl` field resolver on `FileEntity` returns a `data:<mimeType>;base64,<content>` URI
-      built from the stored bytes, or `null` when no content is stored yet.
-- [ ] AC5 `api/prisma/models/files.prisma` gains `content Bytes?`; `key` (the S3 object key) is removed
-      since it no longer refers to anything.
-- [ ] AC6 `upload-file.e2e-spec.ts` and its supporting mocks/helpers pass against the new contract with no
+- [x] AC2 `createFile` accepts an optional base64 `content` input; when provided, the bytes are persisted
+      to the `File.content` column in the same call (no separate "upload" step against external storage
+      remains meaningful). **Amended:** the original criterion said `FileStatus` moves to
+      `FILE_STATUS_UPLOAD_COMPLETED` — `FileStatus` no longer exists (ADR-0010 amendment); this is now
+      moot rather than unmet.
+- [x] AC3 `updateFile` can also accept `content` (matching `CreateFileInput`, which it already extends),
+      to cover a client that creates the record first and attaches bytes in a second call. **Amended:**
+      a client attaching content on `updateFile` no longer has to resend `mimeType` — `FileAssertService`
+      falls back to the record's stored `mimeType` (bug found in a second review round, fixed).
+- [x] AC4 The `publicUrl` field resolver on `FileEntity` returns a `data:<mimeType>;base64,<content>` URI
+      built from the stored bytes, or `null` when no content is stored yet. Resolves correctly whether
+      `publicUrl` is requested directly or through a GraphQL fragment (bug found in a second review round,
+      fixed).
+- [x] AC5 `api/prisma/models/files.prisma` gains `content Bytes?`; `key` (the S3 object key) is removed
+      since it no longer refers to anything. **Amended:** `status`/`FileStatus` is also removed (ADR-0010
+      amendment) — not part of the original AC5, added by the same migration wave.
+- [x] AC6 `upload-file.e2e-spec.ts` and its supporting mocks/helpers pass against the new contract with no
       S3 mock involved.
-- [ ] AC7 `pnpm --dir api exec tsc --noEmit`, `pnpm --dir api run lint`, and the unit/e2e suites all run
+- [x] AC7 `pnpm --dir api exec tsc --noEmit`, `pnpm --dir api run lint`, and the unit/e2e suites all run
       clean of *new* errors (pre-existing baseline failures from the documented Customer-model bug are not
       this ticket's to fix — `ARCHITECTURE.md` known landmines, rule B4).
 
 ## Edge cases
 | Case | Expected behaviour | Decided by |
 |------|--------------------|-----------|
-| `createFile` called with no `content` (record created, bytes attached later via `updateFile`) | Record is created with `content: null`, `status: FILE_STATUS_CREATED`; `publicUrl` resolves to `null` until content arrives | Preserves the existing two-step create-then-update flow the tests already exercise |
+| `createFile` called with no `content` (record created, bytes attached later via `updateFile`) | Record is created with `content: null`; `publicUrl` resolves to `null` until content arrives | Preserves the existing two-step create-then-update flow the tests already exercise |
 | `content` larger than `FILE_MAX_SIZE` | Rejected by `FileAssertService.assertFileInput`, same as today's `size` check, applied to the decoded byte length | Existing validation pattern, extended not replaced |
 | `updateFile` called by an account that doesn't own the file | Same `ForbiddenException` as today, unchanged — `FileAssertService.assertUpdateFile` already scopes by `createdById` | No change needed, already covers `content` since it extends `CreateFileInput` |
 | Malformed base64 in `content` | Rejected at the DTO boundary with a validation error, not a silent empty buffer | Rule D5 — errors are never swallowed |

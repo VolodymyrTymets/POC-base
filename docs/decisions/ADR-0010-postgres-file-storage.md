@@ -76,3 +76,37 @@ approval (rule C2). Two upload and two download options were weighed at plan app
 `FileType.VIDEO` (or any file type meaningfully larger than the 10MB default) gets wired to real logic —
 at that point, the deferred REST-streaming alternative above should be reconsidered, since base64-in-GraphQL
 was accepted specifically for small POC-sized files, not as a permanent architectural choice.
+
+## Amendment (second self-review round, 2026-09-18)
+
+**`FileStatus` removed.** Human decision (plan-approval-level call made directly on the PR, not a
+`docs/features/KAN-6/plan.md` requirement): `File.status`/`FileStatus`
+(`FILE_STATUS_CREATED`/`UPLOAD_IN_PROGRESS`/`UPLOAD_COMPLETED`/`UPLOAD_FAILED`) is dropped entirely —
+migration `20260918130652_kan_6_drop_file_status`. Under the old S3 flow, status tracked a real async
+process (client PUTs to a presigned URL sometime after `createFile` returns). Under this ticket's design,
+content arrives synchronously in the same GraphQL call (or a single follow-up `updateFile` call) — the
+first self-review round's own fix already made `status` a pure function of "is `content` set", which is
+exactly the signal that a separate field has no remaining purpose. `FileEntity`, `CreateFileInput`/
+`UpdateFileInput`, and every consumer were updated accordingly; `UpdateFileInput` is now an intentionally
+empty subclass of `CreateFileInput` (kept for the `update<Entity>Input` naming convention, `api-graphql.md`
+rule 8, even with no fields of its own yet).
+
+**Two real bugs found by a second independent review round, both fixed:**
+1. `FilesResolver`'s `wantsPublicUrl(info)` field-selection check (added in the first self-review round to
+   avoid overfetching `content`) only inspected direct `Field` selections, not `FragmentSpread`/
+   `InlineFragment`. A fragment-based client (e.g. `@graphql-codegen/client-preset`, `web/`'s convention
+   per ADR-0008) requesting `publicUrl` through a fragment got `content: false` selected from Prisma and
+   therefore a silent `publicUrl: null`, even though the file had bytes. Fixed by walking fragments the
+   same way `GraphToPrisma` (`api/src/common/GraphToPrisma.ts`) already does for this repo's relation-
+   selection convention, rather than leaving a second, weaker selection parser in place.
+2. `FileAssertService.assertFileInput`'s "mimeType required with content" check (the first round's own fix
+   for the mimeType-allowlist bypass) applied unchanged to `updateFile`, but `assertFileInput` never saw
+   the record's already-stored `mimeType` — so the documented two-step flow (`createFile` with `mimeType`,
+   then `updateFile` with just `content`) started 403ing unless the client redundantly resent `mimeType`.
+   Fixed in `assertUpdateFile`: fetch the record's stored `mimeType` and fall back to it when the update
+   input omits one, before running the same allowlist check.
+
+Both were caught by two independent review passes (a `code-reviewer` pass and a security-focused pass, run
+twice — once during implementation, once after the PR was pushed) rather than by the test suite; e2e
+coverage was added for both (a fragment-spread query, and an update that omits `mimeType`) so a regression
+would now fail a test, not just a manual check.

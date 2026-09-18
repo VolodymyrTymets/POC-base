@@ -49,16 +49,22 @@ export class FileAssertService {
     input: UpdateFileInput,
     accountId: string,
   ) {
-    this.assertFileInput(input);
-    const count = await this.prisma.file.count({
-      where: {
-        id: fileId,
-        createdById: accountId,
-      },
+    const file = await this.prisma.file.findUnique({
+      where: { id: fileId },
+      select: { createdById: true, mimeType: true },
     });
-    if (!count) {
+    if (!file || file.createdById !== accountId) {
       throw new ForbiddenException();
     }
+    // A client attaching content in a second call (create, then update)
+    // doesn't have to resend mimeType - fall back to the record's stored
+    // value so the mimeType-required-with-content check (above) still runs
+    // against a real, already-allowlisted type instead of rejecting a
+    // legitimate two-step upload.
+    this.assertFileInput({
+      ...input,
+      mimeType: input.mimeType ?? file.mimeType ?? undefined,
+    });
   }
 
   async assertFileAccessByAccount(fileId: string, accountId: string) {

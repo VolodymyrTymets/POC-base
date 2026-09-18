@@ -50,7 +50,7 @@ export class FileE2EService {
             mimeType: "image/png",
             size: 1000000,
             ${contentArg}
-          }) { id name mimeType size status publicUrl }
+          }) { id name mimeType size publicUrl }
         }`,
       })
       .expect(200)) as GraphQLResponseType<CreateFileResponse>;
@@ -75,10 +75,9 @@ export class FileE2EService {
       .send({
         query: `mutation {
           updateFile(fileId: "${fileId}", input: {
-            status: ${input.status}
             ${contentArg}
             ${mimeTypeArg}
-          }) { id, status, publicUrl }
+          }) { id, publicUrl }
         }`,
       })
       .expect(200)) as GraphQLResponseType<UpdateFileResponse>;
@@ -93,8 +92,34 @@ export class FileE2EService {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
         query: `query {
-          file(fileId: "${fileId}") { id, name, mimeType, size, status, publicUrl }
+          file(fileId: "${fileId}") { id, name, mimeType, size, publicUrl }
         }`,
+      })
+      .expect(200)) as GraphQLResponseType<{
+      file: FileEntity;
+    }>;
+
+    this.assertError<{ file: FileEntity }>(response, expectError);
+
+    return response;
+  }
+
+  /** Requests `publicUrl` through a fragment spread, not a direct field
+   * selection - proves the field-selection helper in FilesResolver handles
+   * fragments (see files.resolver.ts's wantsPublicUrl). */
+  async fileQueryViaFragment(
+    accessToken: string,
+    fileId: string,
+    expectError = false,
+  ) {
+    const response = (await request(this.app.getHttpServer())
+      .post('/graphql')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        query: `query {
+          file(fileId: "${fileId}") { id ...FileCard }
+        }
+        fragment FileCard on FileEntity { publicUrl }`,
       })
       .expect(200)) as GraphQLResponseType<{
       file: FileEntity;

@@ -7,7 +7,6 @@ import { DataCooker } from '../../../test/utils/DataCooker/DataCooker';
 import { PrismaAdapterMockFactory } from '../../../test/utils/mock-services/prisma.adapter.factory';
 import { PrismaAdapterFactory } from '../../prisma/prisma.adapter.factory';
 import { PrismaService } from '../../prisma/prisma.service';
-import { FileStatus } from '../../../generated/prisma/client';
 
 describe('FileAssertService', () => {
   let service: FileAssertService;
@@ -85,16 +84,43 @@ describe('FileAssertService', () => {
           name: 'test.png',
           mimeType: 'image/png',
           createdById: owner.id,
-          status: FileStatus.FILE_STATUS_CREATED,
         },
       });
 
       await expect(
-        service.assertUpdateFile(
-          file.id,
-          { status: FileStatus.FILE_STATUS_UPLOAD_IN_PROGRESS },
-          otherAccount.id,
-        ),
+        service.assertUpdateFile(file.id, { name: 'renamed.png' }, otherAccount.id),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('falls back to the stored mimeType when content is sent without one', async () => {
+      const owner = await prismaService.account.create({
+        data: { lastLoginAt: new Date() },
+      });
+      const file = await prismaService.file.create({
+        data: {
+          name: 'test.png',
+          mimeType: 'image/png',
+          createdById: owner.id,
+        },
+      });
+      const content = Buffer.alloc(1024).toString('base64');
+
+      await expect(
+        service.assertUpdateFile(file.id, { content }, owner.id),
+      ).resolves.not.toThrow();
+    });
+
+    it('still rejects content with no mimeType anywhere (call or record)', async () => {
+      const owner = await prismaService.account.create({
+        data: { lastLoginAt: new Date() },
+      });
+      const file = await prismaService.file.create({
+        data: { name: 'test.png', createdById: owner.id },
+      });
+      const content = Buffer.alloc(1024).toString('base64');
+
+      await expect(
+        service.assertUpdateFile(file.id, { content }, owner.id),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -112,7 +138,6 @@ describe('FileAssertService', () => {
           name: 'test.png',
           mimeType: 'image/png',
           createdById: owner.id,
-          status: FileStatus.FILE_STATUS_CREATED,
         },
       });
 

@@ -53,18 +53,10 @@ type FileEntity {
   name: String
   mimeType: String
   size: Float
-  status: FileStatus!
   createdAt: DateTime!
 
   """public url"""
   publicUrl: String
-}
-
-enum FileStatus {
-  FILE_STATUS_CREATED
-  FILE_STATUS_UPLOAD_IN_PROGRESS
-  FILE_STATUS_UPLOAD_COMPLETED
-  FILE_STATUS_UPLOAD_FAILED
 }
 
 type AuthTokensEntity {
@@ -158,9 +150,6 @@ input UpdateFileInput {
 
   """file bytes, base64-encoded"""
   content: String
-
-  """file status"""
-  status: FileStatus!
 }
 
 input SignInInput {

@@ -4,7 +4,6 @@ import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
 import { DataCooker } from '../utils/DataCooker/DataCooker';
 import { SignInService } from '../utils/e2e-services/sign-in.service';
-import { FileStatus } from '../../generated/prisma/enums';
 import { FileE2EService } from '../utils/e2e-services/file-e2e.service';
 import { PrismaAdapterMockFactory } from '../utils/mock-services/prisma.adapter.factory';
 import { PrismaAdapterFactory } from '../../src/prisma/prisma.adapter.factory';
@@ -46,7 +45,6 @@ describe('Upload file (e2e)', () => {
     expect(file.name).toEqual(fileName);
     expect(file.mimeType).toEqual('image/png');
     expect(file.size).toEqual(1000000);
-    expect(file.status).toEqual(FileStatus.FILE_STATUS_CREATED);
     expect(file.publicUrl).toBeNull();
   });
 
@@ -61,7 +59,6 @@ describe('Upload file (e2e)', () => {
     });
     const file = response.body.data.createFile;
     expect(file).toBeDefined();
-    expect(file.status).toEqual(FileStatus.FILE_STATUS_UPLOAD_COMPLETED);
     expect(file.publicUrl).toEqual(`data:image/png;base64,${content}`);
   });
 
@@ -78,7 +75,7 @@ describe('Upload file (e2e)', () => {
     expect(response.body.errors).toBeDefined();
   });
 
-  it('Should update file, attaching content on a second call', async () => {
+  it('Should update file, attaching content on a second call without resending mimeType', async () => {
     const phoneNumber = '+12125551231';
     const fileName = 'test1.png';
     const content = Buffer.from('attached later').toString('base64');
@@ -93,29 +90,12 @@ describe('Upload file (e2e)', () => {
     const uploadingResponse = await fileE2EService.updateFileMutation(
       accessToken,
       file.id,
-      {
-        status: FileStatus.FILE_STATUS_UPLOAD_IN_PROGRESS,
-      },
+      { content },
     );
     const file2 = uploadingResponse.body.data.updateFile;
     expect(file2).toBeDefined();
     expect(file2.id).toEqual(file.id);
-    expect(file2.status).toEqual(FileStatus.FILE_STATUS_UPLOAD_IN_PROGRESS);
-
-    const uploadingResponse1 = await fileE2EService.updateFileMutation(
-      accessToken,
-      file.id,
-      {
-        status: FileStatus.FILE_STATUS_UPLOAD_COMPLETED,
-        content,
-        mimeType: 'image/png',
-      },
-    );
-    const file3 = uploadingResponse1.body.data.updateFile;
-    expect(file3).toBeDefined();
-    expect(file3.id).toEqual(file.id);
-    expect(file3.status).toEqual(FileStatus.FILE_STATUS_UPLOAD_COMPLETED);
-    expect(file3.publicUrl).toEqual(`data:image/png;base64,${content}`);
+    expect(file2.publicUrl).toEqual(`data:image/png;base64,${content}`);
   });
 
   it('Should get file by id', async () => {
@@ -138,6 +118,28 @@ describe('Upload file (e2e)', () => {
     expect(fileById.id).toEqual(file.id);
   });
 
+  it('Should resolve publicUrl requested through a fragment spread', async () => {
+    const phoneNumber = '+12125551231';
+    const content = Buffer.from('fragment coverage').toString('base64');
+    const { accessToken } = await signInService.signInOtp(phoneNumber);
+    const response = await fileE2EService.createFileMutation(accessToken, {
+      name: 'fragment.png',
+      content,
+    });
+    const file = response.body.data.createFile;
+    expect(file).toBeDefined();
+
+    const fragmentResponse = await fileE2EService.fileQueryViaFragment(
+      accessToken,
+      file.id,
+    );
+    const fileByFragment = fragmentResponse.body.data.file;
+    expect(fileByFragment.id).toEqual(file.id);
+    expect(fileByFragment.publicUrl).toEqual(
+      `data:image/png;base64,${content}`,
+    );
+  });
+
   it('Should"t update file of another user ', async () => {
     const phoneNumber1 = '+12125551231';
     const phoneNumber2 = '+12125551232';
@@ -156,9 +158,7 @@ describe('Upload file (e2e)', () => {
     const uploadingResponse = await fileE2EService.updateFileMutation(
       accessToken2,
       file.id,
-      {
-        status: FileStatus.FILE_STATUS_UPLOAD_IN_PROGRESS,
-      },
+      { name: 'renamed.png' },
       true,
     );
     expect(uploadingResponse.body.errors).toBeDefined();

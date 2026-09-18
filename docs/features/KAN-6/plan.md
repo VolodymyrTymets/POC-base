@@ -72,9 +72,9 @@ Prerequisite already applied (plan-approval round, human decision — see spec.m
 ### R4 — `FilesService`: drop `S3ManagerService`, persist bytes (M)
 - files: `api/src/files/files.service.ts` (change — remove the `S3ManagerService` constructor param and
   the `getSignedUrl`/`generateKey` calls; `createFile` stores `Buffer.from(input.content, 'base64')` into
-  `content` when provided and sets `status: FILE_STATUS_UPLOAD_COMPLETED`, else keeps today's
-  `FILE_STATUS_CREATED`; returns the `File` record directly, no `uploadUrl`; `updateFile` passes `content`
-  through the same way when present in its input)
+  `content` when provided; returns the `File` record directly, no `uploadUrl`; `updateFile` passes `content`
+  through the same way when present in its input). **Amended (second self-review round):** the `status`
+  field this R4 originally set is gone entirely, not just derived from content — see ADR-0010's amendment.
 - layer: service
 - test: `api/src/files/files.service.spec.ts` (new, following the `DataCooker` pattern — rule P5, no
   mocked Prisma) — covers both the with-content and without-content `createFile` paths
@@ -176,7 +176,9 @@ Prerequisite already applied (plan-approval round, human decision — see spec.m
   merely made optional or feature-flagged (rule D3 — no escape hatches).
 - `key` (the S3 object key column) is dropped, not repurposed — nothing reads it once `S3ManagerService`
   is gone (spec OQ3).
-- The `FileStatus` upload-lifecycle enum and its guard logic (`FileAssertService`) are unchanged — only
-  the storage/transport of bytes changes, not the state machine.
+- ~~The `FileStatus` upload-lifecycle enum and its guard logic (`FileAssertService`) are unchanged...~~
+  **Amended (second self-review round):** `FileStatus` is removed entirely, not left unchanged — see
+  ADR-0010's amendment. The original assumption didn't anticipate that the first self-review round's own
+  fix (status derived from content presence) would make the field itself redundant.
 - Base64-in-GraphQL for upload and a `data:` URI for download, per the human decision at plan approval —
   not a REST endpoint, not `graphql-upload` (would add a runtime dependency, rule C2, not approved).

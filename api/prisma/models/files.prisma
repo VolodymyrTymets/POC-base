@@ -4,26 +4,18 @@ enum FileType {
 }
 
 model File {
-  id          String     @id @default(uuid(4))
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime?  @updatedAt
-  deleted     Boolean    @default(false)
+  id          String    @id @default(uuid(4))
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+  deleted     Boolean   @default(false)
   name        String?
   content     Bytes?
   mimeType    String?
-  size        Int        @default(0)
-  status      FileStatus @default(FILE_STATUS_CREATED)
+  size        Int       @default(0)
   createdById String
 
   CreatedBy       Account          @relation(fields: [createdById], references: [id])
   accountProfiles AccountProfile[]
 
-  @@index([createdAt(sort: Desc), mimeType, status])
-}
-
-enum FileStatus {
-  FILE_STATUS_CREATED
-  FILE_STATUS_UPLOAD_IN_PROGRESS
-  FILE_STATUS_UPLOAD_COMPLETED
-  FILE_STATUS_UPLOAD_FAILED
+  @@index([createdAt(sort: Desc), mimeType])
 }
