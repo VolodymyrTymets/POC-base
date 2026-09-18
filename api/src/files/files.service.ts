@@ -1,46 +1,44 @@
 import { Injectable } from '@nestjs/common';
-import { FileStatus, Prisma } from '../../generated/prisma/client';
+import { FileStatus } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFileInput } from './dto/create-file.input';
-import { S3ManagerService } from './services/s3-manager.service';
+import { UpdateFileInput } from './dto/update-file.input';
 import { AuthAccount } from '../auth/strategies/jwt.strategy';
 
 @Injectable()
 export class FilesService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly s3ManagerService: S3ManagerService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async createFile(input: CreateFileInput, currentAccount: AuthAccount) {
-    const file = await this.prisma.file.create({
+  createFile(input: CreateFileInput, currentAccount: AuthAccount) {
+    return this.prisma.file.create({
       data: {
         name: input.name,
         size: input.size,
         mimeType: input.mimeType,
         createdById: currentAccount.accountId,
-        status: FileStatus.FILE_STATUS_CREATED,
+        content: input.content
+          ? Buffer.from(input.content, 'base64')
+          : undefined,
+        status: input.content
+          ? FileStatus.FILE_STATUS_UPLOAD_COMPLETED
+          : FileStatus.FILE_STATUS_CREATED,
       },
     });
-
-    const fileKey = this.s3ManagerService.generateKey(file.id, file.name || '');
-    await this.prisma.file.update({
-      where: { id: file.id },
-      data: { key: fileKey },
-    });
-
-    const uploadUrl = await this.s3ManagerService.getSignedUrl(fileKey);
-
-    return {
-      file,
-      uploadUrl,
-    };
   }
 
-  updateFile(fileId: string, data: Prisma.FileUpdateInput) {
+  updateFile(fileId: string, input: UpdateFileInput) {
     return this.prisma.file.update({
       where: { id: fileId },
-      data: { ...data, updatedAt: new Date() },
+      data: {
+        name: input.name,
+        size: input.size,
+        mimeType: input.mimeType,
+        status: input.status,
+        content: input.content
+          ? Buffer.from(input.content, 'base64')
+          : undefined,
+        updatedAt: new Date(),
+      },
     });
   }
 
