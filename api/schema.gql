@@ -67,11 +67,6 @@ enum FileStatus {
   FILE_STATUS_UPLOAD_FAILED
 }
 
-type CreateFileEntity {
-  file: FileEntity!
-  uploadUrl: String!
-}
-
 type AuthTokensEntity {
   """JWT access token (15 min)"""
   accessToken: String!
@@ -96,8 +91,8 @@ type Mutation {
   """Update account profile"""
   updateAccountProfile(accountId: String!, accountProfileInput: UpdateAccountProfileInput!): AccountProfileEntity!
 
-  """Create a new file. Generate upload URL."""
-  createFile(input: CreateFileInput!): CreateFileEntity!
+  """Create a new file, optionally with its content."""
+  createFile(input: CreateFileInput!): FileEntity!
 
   """Update a file."""
   updateFile(fileId: String!, input: UpdateFileInput!): FileEntity!
@@ -146,6 +141,9 @@ input CreateFileInput {
 
   """file size"""
   size: Float
+
+  """file bytes, base64-encoded"""
+  content: String
 }
 
 input UpdateFileInput {
@@ -157,6 +155,9 @@ input UpdateFileInput {
 
   """file size"""
   size: Float
+
+  """file bytes, base64-encoded"""
+  content: String
 
   """file status"""
   status: FileStatus!

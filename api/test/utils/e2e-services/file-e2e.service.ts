@@ -7,7 +7,7 @@ import { CreateFileInput } from '../../../src/files/dto/create-file.input';
 import { UpdateFileInput } from '../../../src/files/dto/update-file.input';
 
 type CreateFileResponse = {
-  createFile: { uploadUrl: string; file: FileEntity };
+  createFile: FileEntity;
 };
 type UpdateFileResponse = {
   updateFile: FileEntity;
@@ -39,6 +39,7 @@ export class FileE2EService {
     input: CreateFileInput,
     expectError = false,
   ) {
+    const contentArg = input.content ? `content: "${input.content}",` : '';
     const response = (await request(this.app.getHttpServer())
       .post('/graphql')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -48,7 +49,8 @@ export class FileE2EService {
             name: "${input.name}",
             mimeType: "image/png",
             size: 1000000,
-          }) { uploadUrl, file { id name mimeType size status } }
+            ${contentArg}
+          }) { id name mimeType size status publicUrl }
         }`,
       })
       .expect(200)) as GraphQLResponseType<CreateFileResponse>;
@@ -63,6 +65,7 @@ export class FileE2EService {
     input: UpdateFileInput,
     expectError = false,
   ) {
+    const contentArg = input.content ? `content: "${input.content}",` : '';
     const response = (await request(this.app.getHttpServer())
       .post('/graphql')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -70,7 +73,8 @@ export class FileE2EService {
         query: `mutation {
           updateFile(fileId: "${fileId}", input: {
             status: ${input.status}
-          }) { id, status }
+            ${contentArg}
+          }) { id, status, publicUrl }
         }`,
       })
       .expect(200)) as GraphQLResponseType<UpdateFileResponse>;
