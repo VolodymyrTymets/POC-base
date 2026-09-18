@@ -1,5 +1,11 @@
 import { InputType, Field } from '@nestjs/graphql';
-import { MaxLength, IsString, IsOptional, IsInt } from 'class-validator';
+import {
+  MaxLength,
+  IsString,
+  IsOptional,
+  IsInt,
+  IsBase64,
+} from 'class-validator';
 
 @InputType()
 export class CreateFileInput {
@@ -19,4 +25,12 @@ export class CreateFileInput {
   @Field(() => Number, { description: 'file size', nullable: true })
   @IsOptional()
   size?: number;
+
+  @IsBase64()
+  @IsOptional()
+  @Field(() => String, {
+    description: 'file bytes, base64-encoded',
+    nullable: true,
+  })
+  content?: string;
 }
