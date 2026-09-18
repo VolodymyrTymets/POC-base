@@ -13,7 +13,8 @@ without every service hand-rolling its own caching.
 Prisma is the ORM (`api/prisma/`, code split across `models/*.prisma`, client generated to
 `api/generated/prisma/`). Services that serve GraphQL reads extend `PrismaCashingService`
 (`api/src/common/prismacashing.service.ts`) and obtain a Prisma client through `getPrismaService(config)`
-backed by `@keyv/redis` / `cacheable`, rather than injecting `PrismaService` directly for every read.
+backed by `ioredis` (via `prisma-extension-redis`), rather than injecting `PrismaService` directly for
+every read.
 
 ## Rejected alternatives
 | Alternative | Why not |
@@ -28,3 +29,9 @@ backed by `@keyv/redis` / `cacheable`, rather than injecting `PrismaService` dir
 
 ## Revisit when
 The caching layer causes a stale-read bug in production, or a second ORM is seriously proposed.
+
+## Amendment (KAN-1, 2026-09-18)
+`@keyv/redis` and `cacheable` were never part of this decision's actual caching path — they backed a
+separate, unused `@nestjs/cache-manager` `CacheModule` registration in `app.module.ts` that nothing ever
+injected. KAN-1 removed that dead module and both packages. The client this ADR describes has always
+been `ioredis`, corrected above; no behavior changed.

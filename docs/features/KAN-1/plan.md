@@ -69,11 +69,14 @@ for removing a dependency cleanly via the package manager, never by hand-editing
   the before/after lint diff is the actual proof, not the cross-check alone.
 
 ## Docs to update in this PR
-- [ ] `docs/features/KAN-1/spec.md` (acceptance criteria checked off)
-- [ ] `docs/ARCHITECTURE.md` — not structurally changed by this ticket; no edit needed
+- [x] `docs/features/KAN-1/spec.md` (acceptance criteria checked off)
+- [x] `docs/ARCHITECTURE.md` — self-review caught a stale line the original plan missed: the Redis
+      section (line 24) named `@keyv/redis` as the caching client, which this PR removes; corrected to
+      `ioredis` (the client `PrismaCashingService` actually uses)
 - [ ] `docs/DOMAIN_GLOSSARY.md` — no new domain terms
-- [ ] `docs/decisions/ADR-NNN` — not needed; this removes dead code per an existing pattern, it doesn't
-      establish a new one
+- [x] `docs/decisions/ADR-0001` — same self-review finding: the ADR described the cache as
+      `@keyv/redis`/`cacheable`-backed, which this PR removes; corrected the client to `ioredis` and
+      added a dated amendment explaining those packages were never actually part of this decision's path
 - [ ] PR body notes (not a doc edit): the follow-up ticket for the 13 live `eslint-disable` comments, and
       the stale "Customer model" landmine row in `docs/RUNBOOK.md`/`docs/ARCHITECTURE.md` found while
       investigating this ticket (the bug no longer reproduces — `tsc --noEmit` shows none of its errors,
