@@ -25,11 +25,14 @@ export class FileAssertService {
   }
 
   assertFileInput(input: CreateFileInput) {
-    const { size, mimeType } = input;
+    const { size, mimeType, content } = input;
     if (size && size > this.max_size) {
       throw new ForbiddenException();
     }
     if (mimeType && !this.assertMimeType(mimeType)) {
+      throw new ForbiddenException();
+    }
+    if (content && Buffer.byteLength(content, 'base64') > this.max_size) {
       throw new ForbiddenException();
     }
     return true;
