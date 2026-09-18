@@ -40,13 +40,11 @@ export class PrismaCashingService {
   ): Promise<Entity> {
     const prismaService = this.prismaWithRedisService;
     if (process.env.NODE_ENV === 'test') {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
       return prismaService[collection].create<Entity>({
         ...createArgs,
       });
     }
     const { patterns, collection: clearCollection } = clearCashingConfig || {};
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
     return prismaService[collection].create<Entity>({
       ...createArgs,
       /***
@@ -59,7 +57,6 @@ export class PrismaCashingService {
         uncacheKeys: [
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
           prismaService.getKeyPattern({
             params: [
               {
@@ -69,11 +66,9 @@ export class PrismaCashingService {
               { glob: '*' },
             ],
           }),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           ...(clearCollection || []).map((name) =>
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-return
             prismaService.getKeyPattern({
               params: [
                 {
@@ -83,11 +78,9 @@ export class PrismaCashingService {
               ],
             }),
           ),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           ...(patterns || []).map((pattern) =>
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-return
             prismaService.getKeyPattern(pattern),
           ),
         ],
@@ -106,11 +99,9 @@ export class PrismaCashingService {
   ): Promise<Entity> {
     const prismaService = this.prismaWithRedisService;
     if (process.env.NODE_ENV === 'test') {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
       return prismaService[collection].update<Entity>(updateArgs);
     }
     const { patterns, collection: clearCollection } = clearCashingConfig || {};
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
     return prismaService[collection].update<Entity>({
       ...updateArgs,
       /***
@@ -123,7 +114,6 @@ export class PrismaCashingService {
         uncacheKeys: [
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-expect-error
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
           prismaService.getKeyPattern({
             params: [
               {
@@ -133,11 +123,9 @@ export class PrismaCashingService {
               { glob: '*' },
             ],
           }),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           ...(clearCollection || []).map((name) =>
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-return
             prismaService.getKeyPattern({
               params: [
                 {
@@ -147,11 +135,9 @@ export class PrismaCashingService {
               ],
             }),
           ),
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           ...(patterns || []).map((pattern) =>
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-return
             prismaService.getKeyPattern(pattern),
           ),
         ],

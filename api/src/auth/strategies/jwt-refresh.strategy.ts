@@ -23,7 +23,6 @@ export class JwtRefreshStrategy extends PassportStrategy(
   }
 
   validate(req: any, payload: JwtPayload): Promise<AuthAccount> {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
     const refreshToken = req.get('x-refresh-token');
     if (!refreshToken) {
       throw new UnauthorizedException();

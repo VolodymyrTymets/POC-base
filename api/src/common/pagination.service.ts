@@ -12,7 +12,6 @@ export class PaginationService extends PrismaCashingService {
   }
 
   findAll<T>(collection: string, findManyArgs: T, info?: GraphQLResolveInfo) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
     return this.prismaService[collection].findMany({
       ...findManyArgs,
       select: getPrismaIncludeFromGqInfo(info),
@@ -29,10 +28,8 @@ export class PaginationService extends PrismaCashingService {
     // @ts-expect-error
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { take, skip, ...findCountArgs } = findManyArgs || {};
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return include.total
-      ? // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-        this.prismaService[collection].count(findCountArgs)
+      ? this.prismaService[collection].count(findCountArgs)
       : new Promise((resolve) => resolve(0));
   }
   async findAllPaginated<T, O>(
@@ -41,7 +38,6 @@ export class PaginationService extends PrismaCashingService {
     info?: GraphQLResolveInfo,
   ): Promise<{ collection: O[]; total: number }> {
     return {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       collection: await this.findAll<T>(collection, findArgs, info),
       total: await this.count<T>(collection, findArgs, info),
     };
