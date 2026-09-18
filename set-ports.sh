@@ -1,6 +1,8 @@
 #!/bin/sh
-# Derives a non-colliding set of ports from one base PORT and writes them into
-# the local (gitignored) env files docker-compose and the web apps read.
+# Derives a non-colliding set of HOST-side ports from one base PORT and writes
+# them into the local (gitignored) env files docker-compose and the web apps
+# read. Container-internal ports are fixed in docker-compose.yml and never
+# change (3001/5432/6379/5173/5174) — only what's externally reachable does.
 # Usage: ./set-ports.sh <BASE_PORT>
 set -eu
 
@@ -13,8 +15,11 @@ usage() {
   echo "Usage: ./set-ports.sh <BASE_PORT>" >&2
   echo "BASE_PORT must be a whole number, 1024-65530." >&2
   echo "Derives WEB_APP_PORT (=BASE), API_PORT (=BASE+1), WEB_ADMIN_PORT (=BASE+2)," >&2
-  echo "POSTGRES_PORT (=BASE+3) and REDIS_PORT (=BASE+4), and writes them into" >&2
-  echo "./.env, api/.env, web/packages/app/.env and web/packages/admin/.env" >&2
+  echo "POSTGRES_PORT (=BASE+3) and REDIS_PORT (=BASE+4) — these are the host-side," >&2
+  echo "externally-reachable ports for this workflow. Container-internal ports never" >&2
+  echo "change (3001/5432/6379/5173/5174, fixed in docker-compose.yml) — only the" >&2
+  echo "host side varies, via EXPOSE_* vars. Writes into ./.env, api/.env," >&2
+  echo "web/packages/app/.env and web/packages/admin/.env." >&2
   exit 1
 }
 
@@ -69,14 +74,17 @@ echo "  POSTGRES_PORT=$POSTGRES_PORT"
 echo "  REDIS_PORT=$REDIS_PORT"
 
 echo "Writing $PWD/.env (docker-compose host-port interpolation)..."
-set_kv "$PWD/.env" API_PORT "$API_PORT"
-set_kv "$PWD/.env" POSTGRES_PORT "$POSTGRES_PORT"
-set_kv "$PWD/.env" REDIS_PORT "$REDIS_PORT"
-# web-app/web-admin map host==container port (both driven by this same var,
-# see docker-compose.yml), so the root .env needs these too, not just each
-# app's own .env (which the container's Vite process reads via env_file).
-set_kv "$PWD/.env" WEB_APP_PORT "$WEB_APP_PORT"
-set_kv "$PWD/.env" WEB_ADMIN_PORT "$WEB_ADMIN_PORT"
+# EXPOSE_* names (docker-compose.yml) are deliberately distinct from the plain
+# names api/.env uses below — they mean different things (published host port
+# vs. the api process's own client-connection settings) and giving them
+# different names removes a real footgun: a shell that happens to export
+# REDIS_PORT (e.g. from sourcing api/.env) can no longer silently override
+# compose's host-port interpolation.
+set_kv "$PWD/.env" EXPOSE_API_PORT "$API_PORT"
+set_kv "$PWD/.env" EXPOSE_POSTGRES_PORT "$POSTGRES_PORT"
+set_kv "$PWD/.env" EXPOSE_REDIS_PORT "$REDIS_PORT"
+set_kv "$PWD/.env" EXPOSE_WEB_APP_PORT "$WEB_APP_PORT"
+set_kv "$PWD/.env" EXPOSE_WEB_ADMIN_PORT "$WEB_ADMIN_PORT"
 
 echo "Writing $PWD/api/.env (local, non-docker api run)..."
 set_kv "$PWD/api/.env" PORT "$API_PORT"

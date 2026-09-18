@@ -53,13 +53,17 @@ fixed ports make that impossible without manual, undocumented file edits.
       and 6000/7000), correct values every time, idempotent re-run, no duplicate lines.
 - [ ] AC2 Given no override, `docker compose up -d` behaves exactly as it does today — same host ports
       (3001/5432/6379), same reachability — so the existing single-instance workflow in `docs/RUNBOOK.md`
-      is not broken. **Partially verified**: `docker compose config` confirms the rendered defaults are
-      still 3001/5432/6379 with no vars set, and `web-app`/`web-admin` were live-verified reachable at
-      their real defaults (5173/5174). `postgres`/`redis`/`api`'s live default-port reachability was
-      **not** independently confirmed in this session — a real, unrelated peer session's stack was
-      occupying 5432/6379 throughout (confirmed via `docker ps`, left untouched); `postgres`/`redis`/`api`
-      were instead live-verified at alternate ports (see AC3). Not left unchecked because of a suspected
-      regression — because the environment made the literal default-port check impossible to observe.
+      is not broken. **Partially verified, environmental gap only** (updated after the build-context/
+      healthcheck-db-name/env-file-location bugs were fixed, ADR-0009): `docker compose config` confirms
+      the rendered defaults are still 3001/5432/6379/5173/5174 with no vars set; `redis` (6379), `web-app`
+      (5173) and `web-admin` (5174) were live-verified reachable at their real defaults via a plain `docker
+      compose up -d`. `postgres` (5432) specifically could not be live-verified at its true default in
+      this session — a real, unrelated peer session's stack was occupying 5432 throughout (confirmed via
+      `docker ps`, left untouched) — which also meant `api`/`worker` (which depend on `postgres` healthy)
+      never started at their defaults here either. Not a regression: `postgres`/`api`/`worker` at defaults
+      *were* fully verified together with `redis`/`web-app`/`web-admin` at *derived, alternate* ports (see
+      AC3) using the exact same, now-fixed `docker compose up -d` path — only the specific combination of
+      "port 5432 free on this host" was never available to test against.
 - [x] AC3 Given `API_PORT`/`POSTGRES_PORT`/`REDIS_PORT` set (via the root `.env` `set-ports.sh` writes),
       `docker compose -p <second-project-name> up -d` started from a second worktree succeeds
       concurrently with the first stack still running — no host-port bind error, no container-name

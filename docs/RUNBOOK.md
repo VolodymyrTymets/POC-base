@@ -45,16 +45,16 @@ No env file is required for `codegen` on a fresh clone — it defaults to `../ap
 `GRAPHQL_SCHEMA_PATH` isn't set (see `web/codegen.ts`, ADR-0008).
 
 ## Running two (or more) stacks side by side
-Every port docker-compose and the web dev servers use is configurable (ADR-0009), so a second git
-worktree can run its own full stack — six services — alongside the first without any port or
-container-name collision:
+Every service's *host-side* port is configurable (ADR-0009) — container-internal ports never change
+(3001/5432/6379/5173/5174, fixed in `docker-compose.yml`) — so a second git worktree can run its own full
+stack — six services — alongside the first without any port or container-name collision:
 ```bash
 # from the new worktree's directory
 ../<original-worktree>/move-env.sh "$PWD"   # copy over the populated local env files
-./set-ports.sh 4000                          # pick any free base port; derives:
-                                              #   WEB_APP_PORT=4000, API_PORT=4001,
-                                              #   WEB_ADMIN_PORT=4002, POSTGRES_PORT=4003,
-                                              #   REDIS_PORT=4004
+./set-ports.sh 4000                          # pick any free base port; derives the *host* ports:
+                                              #   EXPOSE_WEB_APP_PORT=4000, EXPOSE_API_PORT=4001,
+                                              #   EXPOSE_WEB_ADMIN_PORT=4002, EXPOSE_POSTGRES_PORT=4003,
+                                              #   EXPOSE_REDIS_PORT=4004
 docker compose -p <a-project-name-per-worktree> up -d
 ```
 Still just `docker compose up -d` (no `-p`) for a worktree that's fine using the default ports
@@ -91,9 +91,17 @@ expectations, so `docker compose build`/`up` produces a real image without the `
 api/Dockerfile ./api` workaround KAN-8 and KAN-2 both needed until now. The Postgres healthcheck now
 checks `pg_isready -U postgres -d ${DATABASE_NAME:-poc}` (was the literal, wrong `trukkit`) — agrees with
 `POSTGRES_DB=poc`, and stays overridable via a `DATABASE_NAME` env var for a fork that renames the
-database. Verified: a plain `docker compose up -d` (no flags, no manual `docker build`/`docker run`) now
-brings up all six services — `api`, `worker`, `postgres` (healthy), `redis` (healthy), `web-app`,
-`web-admin` — and a real GraphQL call against `api` on `:3001` returned 200.
+database. `api`/`worker`/`postgres`'s `env_file` now points at `api/.env.development` (was a root-level
+`.env.development` that nothing documented how to create) — the existing first-run step's `cp
+api/.env.develoment.example api/.env.development` now actually produces the file compose reads, closing
+the "still open" row this table used to carry for that mismatch. Verified: a plain `docker compose up -d`
+(no flags, no manual `docker build`/`docker run`, and with a real, correctly-populated `api/.env.development`
+created via that first-run step) brings up all six services — `api`, `worker`, `postgres` (healthy),
+`redis` (healthy), `web-app`, `web-admin` — a real GraphQL call against `api` returned 200, and the worker
+connected to Redis cleanly (previously `ECONNREFUSED ::1:6379`/`127.0.0.1:6379` when `REDIS_HOST` was
+missing from that file — a reminder that this file needs the *full* shape in `api/.env.development.example`,
+not just the port vars from the root `.env.example`, which is a different file for a different purpose —
+see ADR-0009).
 
 **Still open** (found while verifying this bootstrap or KAN-8, not fixed — flagging for the team):
 
@@ -104,7 +112,6 @@ brings up all six services — `api`, `worker`, `postgres` (healthy), `redis` (h
 | **Superseded by KAN-7** (see `ADR-0007`): `pnpm --dir api run lint` now runs Oxlint, not ESLint — the linter itself was replaced, this is not a fix to the row below. Real current baseline: **10 errors reported** (with existing `eslint-disable` comments still suppressing violations — Oxlint honors them, verified empirically), **24 unsuppressed** (11 `no-unused-vars`, 12 `ban-ts-comment` — mostly undescribed `@ts-expect-error`/`@ts-ignore`, 1 `no-require-imports`), all pre-existing code-quality issues unrelated to the KAN-7 tool swap. Note the ESLint-era count this row used to cite (60 errors / 5 warnings) was itself already stale before KAN-7 — the real ESLint baseline as installed at the time of the swap was 581 errors / 39 warnings, almost all from type-aware rules (`@typescript-eslint/no-unsafe-*`) that Oxlint doesn't enforce by default (ADR-0007) — so the drop is a rule-set change, not a cleanup. | Same root cause as before: nobody re-ran the full check as dependency versions drifted. | Needs its own triage pass for the remaining violations, including the undescribed `@ts-expect-error`/`@ts-ignore` directives now visible. Not attempted by KAN-7 (out of scope, rule B4/C1). |
 | `.github/workflows/agent-checks.yml`'s suppression-comment guard (added by KAN-8) pattern-matches only the literal string `eslint-disable`. **Corrected during KAN-7's self-review**: Oxlint actually honors `eslint-disable`/`eslint-disable-line`/`eslint-disable-next-line` as real suppressions (not ignored, as first assumed), so the guard still functions against every suppression written before KAN-7. The real gap is narrower: it does not *also* match Oxlint's own `oxlint-disable`/`oxlint-disable-line`/`oxlint-disable-next-line` syntax (confirmed via Context7, oxc.rs docs), which a suppression written after KAN-7 might use instead | A future `oxlint-disable` suppression comment could land in a PR without a `WHY:` justification and this CI guard would not catch that specific spelling — a real, currently-open enforcement gap, though the old spelling is still covered | Extend the guard's regex to also include `oxlint-disable`. Not done by KAN-7 — CI/pipeline files are only changed in a dedicated PR with a human reviewer (rule T4). |
 | No formatting check remains in the command map after KAN-7 (`ADR-0007`) | Before KAN-7, `eslint-plugin-prettier` surfaced Prettier drift as a `lint` error; that bridge was intentionally dropped (Prettier already runs standalone via `format`), but nothing replaced it as a *check* — `format` is `prettier --write` (a writer), and no `format:check`/`prettier --check` script exists, so unformatted code no longer fails anything in the command map | Add a `format:check` script (`prettier --check ...`) if the team wants formatting enforced again; not added by KAN-7 (out of scope for a linter swap) |
-| `docker compose up` fails with `env file /.../.env.development not found` | `docker-compose.yml`'s `env_file: .env.development` resolves relative to the compose file's own location (repo root), but the documented first-run step (above) creates `api/.env.development`, not a root-level one. | Either move/symlink the env file to the repo root, or change `docker-compose.yml`'s `env_file` to `api/.env.development`. Not fixed by KAN-8 or KAN-2. Note KAN-2 does add a *different*, unrelated root-level `.env` (compose port interpolation only, ADR-0009); don't confuse the two files. |
 
 ## Release
 No release process exists yet — no CI/CD, no staging or production environment is defined in this repo (see `ARCHITECTURE.md`). `.github/workflows/agent-checks.yml` added by this PR only checks PR evidence/bypass hygiene, it does not deploy anything.

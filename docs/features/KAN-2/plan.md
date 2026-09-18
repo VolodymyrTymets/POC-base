@@ -235,8 +235,28 @@ Two nits also fixed: the root `.gitignore`'s new rules are now anchored (`/.env`
 file (verified via `git check-ignore` before/after); `web/Dockerfile`'s `EXPOSE` lines got a comment
 noting they're documentation-only and go stale once a derived port is in use. A third nit (renaming the
 compose-side `*_PORT` vars to avoid the naming collision with `api/.env`'s own `REDIS_PORT`, which means
-something different) was left as-is — real but genuinely cosmetic, and renaming touches every file in this
-PR for a collision that's already handled correctly by `set-ports.sh` writing distinct files per meaning.
+something different) was left as-is at the time — real but genuinely cosmetic — and revisited below.
+
+## Post-handoff changes (made at the user's explicit request, after the PR was opened)
+1. **`docker-compose.yml`'s host-port vars renamed to `EXPOSE_API_PORT`/`EXPOSE_POSTGRES_PORT`/
+   `EXPOSE_REDIS_PORT`/`EXPOSE_WEB_APP_PORT`/`EXPOSE_WEB_ADMIN_PORT`.** The user made this change directly
+   (plus fixing container-internal ports for `web-app`/`web-admin` at 5173/5174 always, matching
+   `api`/`postgres`/`redis`), which is exactly the "revisit" the nit above flagged — now every host port
+   has a name distinct from any client-connection-setting var elsewhere. `set-ports.sh` and the docs were
+   updated to match; re-verified end to end (two full concurrent stacks, all six services each, on the new
+   var names).
+2. **Two more pre-existing, unrelated `docker-compose.yml` bugs fixed** (build-context mismatch for
+   `api`/`worker`; Postgres healthcheck checking the wrong db name), at the user's explicit request after
+   hitting them directly via `docker compose up` — see ADR-0009's Decision section and
+   `docs/RUNBOOK.md`'s "Fixed by KAN-2" note. These were originally logged in `docs/ARCHITECTURE.md` as
+   out-of-scope landmines (rule C1) — no longer out of scope once the user asked for them directly.
+3. **A third, related bug found and fixed while debugging**: `docker-compose.yml`'s `api`/`worker`/
+   `postgres` now read `env_file: api/.env.development` (was a root-level `.env.development`, which
+   nothing documented how to create — the third of the three original landmines). This also fixed a real
+   runtime bug the user hit directly: a root `.env.development` copied from the wrong template (missing
+   `REDIS_HOST`) caused `worker`'s Redis client to fall back to `localhost`, producing
+   `ECONNREFUSED ::1:6379` inside the container. Root-caused and fixed by writing the correct content into
+   `api/.env.development` (a local, gitignored file — no commit-blocking concern).
 
 ## Risks
 | Risk | Impact | Cheapest way to find out early |
