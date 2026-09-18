@@ -1,0 +1,107 @@
+#!/bin/sh
+# Derives a non-colliding set of HOST-side ports from one base PORT and writes
+# them into the local (gitignored) env files docker-compose and the web apps
+# read. Container-internal ports are fixed in docker-compose.yml and never
+# change (3001/5432/6379/5173/5174) — only what's externally reachable does.
+# Usage: ./set-ports.sh <BASE_PORT>
+set -eu
+
+# Always operate relative to this script's own location (repo root), not the
+# caller's cwd — otherwise running this from a subdirectory writes a stray
+# .env in the wrong place while still reporting success.
+cd "$(dirname "$0")"
+
+usage() {
+  echo "Usage: ./set-ports.sh <BASE_PORT>" >&2
+  echo "BASE_PORT must be a whole number, 1024-65530." >&2
+  echo "Derives WEB_APP_PORT (=BASE), API_PORT (=BASE+1), WEB_ADMIN_PORT (=BASE+2)," >&2
+  echo "POSTGRES_PORT (=BASE+3) and REDIS_PORT (=BASE+4) — these are the host-side," >&2
+  echo "externally-reachable ports for this workflow. Container-internal ports never" >&2
+  echo "change (3001/5432/6379/5173/5174, fixed in docker-compose.yml) — only the" >&2
+  echo "host side varies, via EXPOSE_* vars. Writes into ./.env, api/.env," >&2
+  echo "web/packages/app/.env.development and web/packages/admin/.env.development." >&2
+  exit 1
+}
+
+case "${1:-}" in
+  '' | *[!0-9]*) usage ;;
+esac
+BASE_PORT=$1
+if [ "$BASE_PORT" -lt 1024 ] || [ "$BASE_PORT" -gt 65530 ]; then
+  usage
+fi
+
+WEB_APP_PORT=$((BASE_PORT))
+API_PORT=$((BASE_PORT + 1))
+WEB_ADMIN_PORT=$((BASE_PORT + 2))
+POSTGRES_PORT=$((BASE_PORT + 3))
+REDIS_PORT=$((BASE_PORT + 4))
+
+# Sets KEY=VALUE in FILE: replaces an existing KEY= line, appends otherwise.
+# Single awk pass (not append-then-rewrite) so a file whose last line lacks a
+# trailing newline doesn't get the appended key silently merged into it.
+set_kv() {
+  file="$1"
+  key="$2"
+  value="$3"
+  touch "$file"
+  awk -v k="$key" -v v="$value" '
+    BEGIN { FS = OFS = "=" }
+    $1 == k { $0 = k "=" v; found = 1 }
+    { print }
+    END { if (!found) print k "=" v }
+  ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+}
+
+# Rewrites just the :<port>/ segment of an existing KEY=scheme://...@host:port/...
+# line (e.g. DATABASE_URL) in place. No-op if FILE or KEY doesn't exist yet —
+# this only overrides a value that's already there, it doesn't invent one.
+set_url_port() {
+  file="$1"
+  key="$2"
+  port="$3"
+  [ -f "$file" ] || return 0
+  grep -q "^${key}=.*://" "$file" 2>/dev/null || return 0
+  sed -E -i.bak "s|(^${key}=.*://[^/]*:)[0-9]+(/.*)|\\1${port}\\2|" "$file"
+  rm -f "$file.bak"
+}
+
+echo "Deriving ports from base $BASE_PORT:"
+echo "  WEB_APP_PORT=$WEB_APP_PORT"
+echo "  API_PORT=$API_PORT"
+echo "  WEB_ADMIN_PORT=$WEB_ADMIN_PORT"
+echo "  POSTGRES_PORT=$POSTGRES_PORT"
+echo "  REDIS_PORT=$REDIS_PORT"
+
+echo "Writing $PWD/.env (docker-compose host-port interpolation)..."
+# EXPOSE_* names (docker-compose.yml) are deliberately distinct from the plain
+# names api/.env uses below — they mean different things (published host port
+# vs. the api process's own client-connection settings) and giving them
+# different names removes a real footgun: a shell that happens to export
+# REDIS_PORT (e.g. from sourcing api/.env) can no longer silently override
+# compose's host-port interpolation.
+set_kv "$PWD/.env" EXPOSE_API_PORT "$API_PORT"
+set_kv "$PWD/.env" EXPOSE_POSTGRES_PORT "$POSTGRES_PORT"
+set_kv "$PWD/.env" EXPOSE_REDIS_PORT "$REDIS_PORT"
+set_kv "$PWD/.env" EXPOSE_WEB_APP_PORT "$WEB_APP_PORT"
+set_kv "$PWD/.env" EXPOSE_WEB_ADMIN_PORT "$WEB_ADMIN_PORT"
+
+echo "Writing $PWD/api/.env (local, non-docker api run)..."
+set_kv "$PWD/api/.env" PORT "$API_PORT"
+# The API's own listen port isn't its only port dependency: for the local,
+# non-docker run it also dials Postgres/Redis directly over localhost, at
+# whatever host port they're published on — which just changed too. Missing
+# this meant a second worktree's non-docker `api` would silently keep talking
+# to the FIRST worktree's database and Redis/BullMQ queue instead of its own.
+set_kv "$PWD/api/.env" REDIS_PORT "$REDIS_PORT"
+set_url_port "$PWD/api/.env" DATABASE_URL "$POSTGRES_PORT"
+
+echo "Writing $PWD/web/packages/app/.env.development..."
+set_kv "$PWD/web/packages/app/.env.development" WEB_APP_PORT "$WEB_APP_PORT"
+set_kv "$PWD/web/packages/app/.env.development" VITE_GRAPHQL_URL "http://localhost:$API_PORT/graphql"
+
+echo "Writing $PWD/web/packages/admin/.env.development..."
+set_kv "$PWD/web/packages/admin/.env.development" WEB_ADMIN_PORT "$WEB_ADMIN_PORT"
+set_kv "$PWD/web/packages/admin/.env.development" VITE_GRAPHQL_URL "http://localhost:$API_PORT/graphql"
+
+echo "Done."

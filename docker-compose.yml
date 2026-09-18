@@ -3,14 +3,13 @@ version: '3.8'
 services:
   # Node.js Application (API)
   api:
-    container_name: api
     build:
-      context: .
+      context: ./api
       target: development
     ports:
-      - "3001:3001"
+      - "${EXPOSE_API_PORT:-3001}:3001"
     env_file:
-      - .env.development
+      - api/.env.development
     depends_on:
       postgres:
         condition: service_healthy
@@ -21,12 +20,11 @@ services:
 
   # Background Worker
   worker:
-    container_name: worker
     build:
-      context: .
+      context: ./api
       target: worker
     env_file:
-      - .env.development
+      - api/.env.development
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,16 +37,15 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgis/postgis:16-3.4
-    container_name: postgres
     restart: always
     env_file:
-      - .env.development
+      - api/.env.development
     ports:
-      - "5432:5432"
+      - "${EXPOSE_POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d trukkit"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${DATABASE_NAME:-poc}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -58,10 +55,9 @@ services:
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: redis
     restart: always
     ports:
-      - "6379:6379"
+      - "${EXPOSE_REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -69,6 +65,48 @@ services:
       retries: 5
     volumes:
       - redisdata:/data
+    networks:
+      - my_network
+
+  # web/ app (Vite dev server, source live-mounted for HMR)
+  web-app:
+    build:
+      context: ./web
+      target: app-dev
+    ports:
+      - "${EXPOSE_WEB_APP_PORT:-5173}:5173"
+    environment:
+      WEB_APP_PORT: "5173"
+    env_file:
+      - path: web/packages/app/.env.development
+        required: false
+    volumes:
+      - ./web:/usr/src/app
+      - /usr/src/app/node_modules
+      - /usr/src/app/packages/app/node_modules
+      - /usr/src/app/packages/admin/node_modules
+      - /usr/src/app/shared/node_modules
+    networks:
+      - my_network
+
+  # web/ admin (Vite dev server, source live-mounted for HMR)
+  web-admin:
+    build:
+      context: ./web
+      target: admin-dev
+    ports:
+      - "${EXPOSE_WEB_ADMIN_PORT:-5174}:5174"
+    environment:
+      WEB_ADMIN_PORT: "5174"
+    env_file:
+      - path: web/packages/admin/.env.development
+        required: false
+    volumes:
+      - ./web:/usr/src/app
+      - /usr/src/app/node_modules
+      - /usr/src/app/packages/app/node_modules
+      - /usr/src/app/packages/admin/node_modules
+      - /usr/src/app/shared/node_modules
     networks:
       - my_network
 

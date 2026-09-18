@@ -7,3 +7,11 @@
 # Claude Code local/session state (per-developer, never shared)
 .claude/settings.local.json
 .claude/.state/
+
+# Root-level env, used only for docker-compose port interpolation (KAN-2) — per-worktree, never shared.
+# Anchored to the repo root (leading /) so this can't shadow a tracked .env.example
+# elsewhere in the repo (e.g. api/.env.develoment.example) the way an unanchored
+# pattern would.
+/.env
+/.env.*
+!/.env.example
