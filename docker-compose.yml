@@ -4,7 +4,7 @@ services:
   # Node.js Application (API)
   api:
     build:
-      context: .
+      context: ./api
       target: development
     ports:
       - "${API_PORT:-3001}:3001"
@@ -21,7 +21,7 @@ services:
   # Background Worker
   worker:
     build:
-      context: .
+      context: ./api
       target: worker
     env_file:
       - .env.development
@@ -45,7 +45,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d trukkit"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${DATABASE_NAME:-poc}"]
       interval: 5s
       timeout: 5s
       retries: 5
