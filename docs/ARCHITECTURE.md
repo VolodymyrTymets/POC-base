@@ -16,7 +16,8 @@
 | `web/packages/app/`, `web/packages/admin/` | the two apps — placeholder routes only so far, no real screens yet | — | frontend |
 | `web/shared/` | shared `components/`, `theme/` (Tailwind v4 tokens) and `api/` (GraphQL documents + `client-preset` output) consumed by both apps | — | frontend |
 | `web/shared/api/generated/` | generated GraphQL types (`@graphql-codegen/client-preset`, from `api/schema.gql`) — never hand-edit | — | generated |
-| `docker-compose.yml` | local dev stack: `api`, `worker`, Postgres+PostGIS, Redis | — | backend |
+| `web/Dockerfile` | dev-server-only image for `web/`, two targets (`app-dev`, `admin-dev`) — no production/nginx stage (KAN-2, ADR-0009) | — | frontend |
+| `docker-compose.yml` | local dev stack: `api`, `worker`, Postgres+PostGIS, Redis, and (since KAN-2, ADR-0009) `web-app`/`web-admin`; every service's host port is configurable via `set-ports.sh` for running more than one stack at once | — | backend |
 
 ## Where data truth lives
 - **PostgreSQL (PostGIS enabled)** is the single source of truth for domain data, accessed exclusively through Prisma (`api/src/prisma/prisma.service.ts`).
