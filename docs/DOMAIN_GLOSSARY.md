@@ -13,7 +13,7 @@ names for something they don't mean.
 | Profile | `AccountProfile` | The personal details attached 1:1 to an `Account`: name, phone, email, DOB, SSN, avatar. | `Account` |
 | Identity / credentials | `AccountIdentity` | Password/OTP hash material and the refresh token for an `Account`. Never exposed through GraphQL. | `AccountProfile` |
 | Role | `AccountRole` (`CUSTOMER`, `ADMIN`), `AccountOnRole` | A named permission bucket an `Account` can be placed in, many-to-many via `AccountOnRole`. | — |
-| File | `File`, `FileEntity` | A tracked upload: S3 key, mime type, size, and an upload-lifecycle `status`. | The actual bytes, which live in S3, not the database |
+| File | `File`, `FileEntity` | A tracked upload: content bytes (`content`, Postgres `bytea`, ADR-0010), mime type, size, and an upload-lifecycle `status`. | — bytes live in the database itself as of KAN-6, not an external object store |
 | Notification | `Notification`, `NotificationRecipient` | A message plus the set of accounts it was sent to. `type` is currently a free string (`// todo: move to enum`). | — |
 | Sign-in code / OTP | `SignInOtpEntity`, `OtpCodeGeneratorService` | The one-time code sent to a phone number to authenticate; hashed at rest, never logged. | JWT access/refresh tokens, issued after OTP verification |
 
@@ -26,5 +26,5 @@ names for something they don't mean.
 | Enum | Values | Meaning of each |
 |------|--------|-----------------|
 | `AccountRoleType` | `CUSTOMER`, `ADMIN` | Who the account acts as — gates `RoleGuard`/`@Roles(...)` checks. |
-| `FileStatus` | `FILE_STATUS_CREATED`, `FILE_STATUS_UPLOAD_IN_PROGRESS`, `FILE_STATUS_UPLOAD_COMPLETED`, `FILE_STATUS_UPLOAD_FAILED` | Where an upload is in its S3 presigned-URL lifecycle. |
+| `FileStatus` | `FILE_STATUS_CREATED`, `FILE_STATUS_UPLOAD_IN_PROGRESS`, `FILE_STATUS_UPLOAD_COMPLETED`, `FILE_STATUS_UPLOAD_FAILED` | Where an upload is in its lifecycle — `createFile` sets `FILE_STATUS_UPLOAD_COMPLETED` directly when `content` is provided at creation time, else `FILE_STATUS_CREATED` until a follow-up `updateFile` attaches it. |
 | `FileType` | `IMG`, `VIDEO` | Declared in the schema; not yet observed wired to any resolver/service logic — confirm before relying on it. |

@@ -30,7 +30,7 @@
 |----------|--------|-----------------|--------------------------------------|----------------------|
 | GraphQL API | GraphQL over HTTP (Apollo, `/graphql`) | `@Resolver`/`@ObjectType`/`@InputType` decorators in `api/src/**` | `api/schema.gql` | automatic on `pnpm --dir api run start:dev` boot |
 | Database schema | Prisma schema | `api/prisma/models/*.prisma` | `api/generated/prisma/**`, `api/prisma/migrations/**` | `pnpm --dir api run prisma-gen` (client), `pnpm --dir api run prisma-migrate` (migration, local DB only) |
-| File storage | S3 object + presigned URL | `api/src/files/` (`S3ManagerService`) | — | — |
+| File storage | `File.content` (Postgres `bytea`), served as a `data:` URI (ADR-0010) | `api/src/files/` (`FilesService`) | — | — |
 | `web/`'s GraphQL types | TypeScript, from `api/schema.gql` | `api/schema.gql` (not live introspection — see ADR-0008) | `web/shared/api/generated/**` | `pnpm --dir web run codegen` |
 
 There is no REST contract of note: `AppController` exposes a single `/test` placeholder route, not a real API surface.
@@ -52,12 +52,17 @@ Client requests an OTP mutation (`auth.resolver.ts` → `AuthService` → `OtpAu
 Resolver (`@UseGuards(GqlAuthGuard)`) → service extending `PrismaCashingService`, passing `GraphQLResolveInfo` down (`getPrismaService(infoToPrismaCashingConfig(info))`, `getPrismaIncludeFromGqInfo(info)`) → Prisma selects only the requested fields, response cached in Redis for subsequent identical selections.
 
 ### 3. File upload
-Client calls `createFile` mutation → `FileAssertService` validates the input → `FilesService` creates a `File` row (`status: FILE_STATUS_CREATED`) and `S3ManagerService` returns a presigned upload URL → client uploads directly to S3 → a follow-up `updateFile` mutation (re-checked by `FileAssertService.assertUpdateFile`) flips the status.
+Client calls `createFile` mutation with an optional base64 `content` → `FileAssertService` validates the
+input, including the decoded content's byte length against `FILE_MAX_SIZE` → `FilesService` stores the
+decoded bytes directly in the `File.content` column (Postgres, ADR-0010) and sets
+`status: FILE_STATUS_UPLOAD_COMPLETED` when content was provided, else `FILE_STATUS_CREATED` — a
+follow-up `updateFile` mutation (re-checked by `FileAssertService.assertUpdateFile`) can attach `content`
+and flip the status when a client creates the record first. `FileEntity.publicUrl` is computed from the
+stored bytes as a `data:<mimeType>;base64,<content>` URI — there is no external storage call in this flow.
 
 ## External integrations
 | Service | Purpose | Failure mode | Sandbox available? |
 |---------|---------|--------------|--------------------|
-| AWS S3 | file storage for uploads | upload URL generation fails, user sees a blocked upload | not configured in this repo yet — see RUNBOOK |
 | SMS provider (via `SmsNotifierService`) | OTP delivery | sign-in blocked | mocked in tests (`test/utils/mock-services`); no real sandbox wired yet |
 | Sentry | error tracking (`@sentry/nestjs`) | silent — errors just aren't reported | disabled locally (`enabled: NODE_ENV !== 'local'` in `api/src/instrument.ts`) |
 
