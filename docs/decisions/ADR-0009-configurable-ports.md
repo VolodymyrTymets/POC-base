@@ -20,7 +20,14 @@ One base `PORT`, given to `set-ports.sh <BASE_PORT>` (repo root, sibling to `mov
 named variables — `WEB_APP_PORT=BASE`, `API_PORT=BASE+1`, `WEB_ADMIN_PORT=BASE+2`, `POSTGRES_PORT=BASE+3`,
 `REDIS_PORT=BASE+4` — and writes them into the local, gitignored env files that already exist for each
 piece (`./.env` for docker-compose's own `${...}` interpolation, `api/.env`, `web/packages/app/.env`,
-`web/packages/admin/.env`). `docker-compose.yml`'s `container_name` is removed from every service so
+`web/packages/admin/.env`). `api/.env` needs more than just its own `PORT` rewritten: the *local,
+non-docker* `api` also dials Postgres and Redis directly over `localhost:<port>`, so `set-ports.sh`
+rewrites `REDIS_PORT` there too and the port embedded inside `DATABASE_URL` (via a small in-place
+substitution, not a full rewrite, since the rest of that URL — user, password, db name — isn't this
+script's to touch). Missed on the first pass (caught by `/review-pr`'s self-review): without it, a second
+worktree's non-docker `api` would silently keep talking to the *first* worktree's database and
+Redis/BullMQ queue instead of its own. `docker-compose.yml`'s `container_name` is removed from every
+service so
 Compose's own per-project auto-naming (`<project>-<service>-1`) prevents a Docker-daemon-wide name
 collision, which port changes alone do not fix.
 
@@ -36,6 +43,16 @@ fixed-internal-port scheme just for symmetry with the other three services. Vite
 what actually makes the container's dev server reachable through that host mapping at all; without it, a
 Vite server bound to its default `127.0.0.1` is unreachable from outside its own container regardless of
 how the port is published.
+
+`web-app`/`web-admin` bind-mount `./web` over the image's `/usr/src/app` (with anonymous volumes over
+each `node_modules` directory, so the container's own linux-native `pnpm install` isn't shadowed by the
+host's tree) — without this, "dev server, HMR" would be false: each container would just be a frozen
+`COPY . .` snapshot from build time, and editing source on the host would change nothing running.
+`env_file` on those two services is `required: false`, since a fresh clone has no local
+`web/packages/*/.env` yet and Compose otherwise refuses to bring up *any* service, not just these two,
+on a missing `env_file` — the container's own listen port comes from an `environment:` block driven by
+the same var as the host-side mapping instead, so `env_file` only carries `VITE_*` values now, with
+nothing load-bearing left to diverge.
 
 ## Rejected alternatives
 | Alternative | Why not |

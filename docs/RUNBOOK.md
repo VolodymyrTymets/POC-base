@@ -62,6 +62,10 @@ Still just `docker compose up -d` (no `-p`) for a worktree that's fine using the
 Docker path too (`web-app`/`web-admin` services, ADR-0009) — `pnpm --dir web/packages/app run dev` still
 works standalone if you don't want it in Docker; both read the same `web/packages/*/.env`.
 
+`postgres`/`redis`/`web-app`/`web-admin` come up cleanly either way. `api`/`worker` do not — the same
+build-context and Postgres-healthcheck-db-name bugs in the "Known failures" table below block them
+regardless of which ports are in play; that's pre-existing, not something this section's workflow fixes.
+
 ## Commands
 See the command map in `CLAUDE.md` — that is the canonical list.
 

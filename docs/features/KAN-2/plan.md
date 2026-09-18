@@ -198,6 +198,46 @@ per-write confirmation but are not blocked outright.
       .env.example web/packages/app/.env.example web/packages/admin/.env.example` + commit — nothing left
       to author, the content is already right. `api/.env.example` needed no change.
 
+## Self-review findings (fixed before handoff)
+`/review-pr`'s `code-reviewer` pass found one real blocking bug and five should-fix issues after all
+five requirements above were implemented and gated. All six were fixed and re-verified; recorded here
+rather than silently folded into the requirements above, since they were found after those were already
+gated:
+- **[blocking]** `set-ports.sh` only rewrote `api/.env`'s `PORT`, not `REDIS_PORT` or the port embedded in
+  `DATABASE_URL` — a second worktree's *local, non-docker* `api` would silently keep talking to the first
+  worktree's Postgres and Redis/BullMQ queue. Fixed: added `set_url_port` (rewrites just the `:port/`
+  segment of an existing URL value) and a `REDIS_PORT` `set_kv` call; re-verified the derived file end to
+  end.
+- **[should-fix]** `web-app`/`web-admin`'s `env_file` pointed at gitignored files nothing creates on a
+  fresh clone; Compose aborts the *whole* `docker compose config`/`up` on a missing `env_file`, breaking
+  AC2 for anyone who hasn't run `set-ports.sh` yet. Fixed: `env_file: [{path: ..., required: false}]`;
+  re-verified `docker compose up -d` works with those files absent entirely.
+- **[should-fix]** Two sources of truth for the container's listen port (root `.env` via host-side
+  interpolation, vs. `web/packages/*/.env` via `env_file`) could diverge. Fixed: added an `environment:`
+  block driven from the same interpolated var Compose uses for the host mapping (env vars win over
+  `env_file`, so it can't diverge); `env_file` is now for `VITE_*` only.
+- **[should-fix]** `web/Dockerfile` had no `.dockerignore` (unlike `api/.dockerignore`) — `COPY . .`
+  baked in the host's own `node_modules` (wrong platform binaries, defeating the frozen `pnpm install`)
+  and any local `.env`. Fixed: added `web/.dockerignore` mirroring `api/.dockerignore`.
+- **[should-fix]** The "dev server, HMR" services didn't actually mount source — each was a frozen
+  `COPY . .` snapshot, so editing `web/` on the host changed nothing running. Fixed: added
+  `volumes: [./web:/usr/src/app, ...anonymous volumes per node_modules dir]` to both services;
+  re-verified live — an edit to `App.tsx` on the host produced two real `hmr update` log lines inside the
+  running container.
+- **[should-fix]** `set-ports.sh` had no input validation, no `set -eu`, and resolved paths from the
+  caller's `$PWD` rather than its own location — bad input or the wrong invocation directory wrote a
+  stray `.env` while still printing `Done.`/exit 0. Fixed: `set -eu`, numeric+range validation
+  (1024–65530), `cd "$(dirname "$0")"` at the top; re-verified rejection of empty/non-numeric/out-of-range
+  input and correct behavior when invoked from a subdirectory.
+
+Two nits also fixed: the root `.gitignore`'s new rules are now anchored (`/.env`, `/.env.*`,
+`!/.env.example`) so they can't shadow `api/.env.develoment.example` or any other nested tracked example
+file (verified via `git check-ignore` before/after); `web/Dockerfile`'s `EXPOSE` lines got a comment
+noting they're documentation-only and go stale once a derived port is in use. A third nit (renaming the
+compose-side `*_PORT` vars to avoid the naming collision with `api/.env`'s own `REDIS_PORT`, which means
+something different) was left as-is — real but genuinely cosmetic, and renaming touches every file in this
+PR for a collision that's already handled correctly by `set-ports.sh` writing distinct files per meaning.
+
 ## Risks
 | Risk | Impact | Cheapest way to find out early |
 |------|--------|-------------------------------|

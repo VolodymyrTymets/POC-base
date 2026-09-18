@@ -68,27 +68,49 @@ services:
     networks:
       - my_network
 
-  # web/ app (Vite dev server)
+  # web/ app (Vite dev server, source live-mounted for HMR)
   web-app:
     build:
       context: ./web
       target: app-dev
     ports:
       - "${WEB_APP_PORT:-5173}:${WEB_APP_PORT:-5173}"
+    # WEB_APP_PORT here is the single source of truth for this container's listen
+    # port (env vars win over env_file, so it can't diverge from the host mapping
+    # above); env_file is for VITE_* vars only (e.g. VITE_GRAPHQL_URL) and is
+    # optional since a fresh clone has no local web/packages/app/.env yet.
+    environment:
+      WEB_APP_PORT: "${WEB_APP_PORT:-5173}"
     env_file:
-      - web/packages/app/.env
+      - path: web/packages/app/.env
+        required: false
+    volumes:
+      - ./web:/usr/src/app
+      - /usr/src/app/node_modules
+      - /usr/src/app/packages/app/node_modules
+      - /usr/src/app/packages/admin/node_modules
+      - /usr/src/app/shared/node_modules
     networks:
       - my_network
 
-  # web/ admin (Vite dev server)
+  # web/ admin (Vite dev server, source live-mounted for HMR)
   web-admin:
     build:
       context: ./web
       target: admin-dev
     ports:
       - "${WEB_ADMIN_PORT:-5174}:${WEB_ADMIN_PORT:-5174}"
+    environment:
+      WEB_ADMIN_PORT: "${WEB_ADMIN_PORT:-5174}"
     env_file:
-      - web/packages/admin/.env
+      - path: web/packages/admin/.env
+        required: false
+    volumes:
+      - ./web:/usr/src/app
+      - /usr/src/app/node_modules
+      - /usr/src/app/packages/app/node_modules
+      - /usr/src/app/packages/admin/node_modules
+      - /usr/src/app/shared/node_modules
     networks:
       - my_network
 

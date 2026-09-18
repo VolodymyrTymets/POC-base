@@ -2,17 +2,29 @@
 # Derives a non-colliding set of ports from one base PORT and writes them into
 # the local (gitignored) env files docker-compose and the web apps read.
 # Usage: ./set-ports.sh <BASE_PORT>
-# Run from the repo root, same as move-env.sh.
+set -eu
 
-if [ -z "$1" ]; then
+# Always operate relative to this script's own location (repo root), not the
+# caller's cwd — otherwise running this from a subdirectory writes a stray
+# .env in the wrong place while still reporting success.
+cd "$(dirname "$0")"
+
+usage() {
   echo "Usage: ./set-ports.sh <BASE_PORT>" >&2
+  echo "BASE_PORT must be a whole number, 1024-65530." >&2
   echo "Derives WEB_APP_PORT (=BASE), API_PORT (=BASE+1), WEB_ADMIN_PORT (=BASE+2)," >&2
   echo "POSTGRES_PORT (=BASE+3) and REDIS_PORT (=BASE+4), and writes them into" >&2
   echo "./.env, api/.env, web/packages/app/.env and web/packages/admin/.env" >&2
   exit 1
-fi
+}
 
+case "${1:-}" in
+  '' | *[!0-9]*) usage ;;
+esac
 BASE_PORT=$1
+if [ "$BASE_PORT" -lt 1024 ] || [ "$BASE_PORT" -gt 65530 ]; then
+  usage
+fi
 
 WEB_APP_PORT=$((BASE_PORT))
 API_PORT=$((BASE_PORT + 1))
@@ -36,6 +48,19 @@ set_kv() {
   ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
 }
 
+# Rewrites just the :<port>/ segment of an existing KEY=scheme://...@host:port/...
+# line (e.g. DATABASE_URL) in place. No-op if FILE or KEY doesn't exist yet —
+# this only overrides a value that's already there, it doesn't invent one.
+set_url_port() {
+  file="$1"
+  key="$2"
+  port="$3"
+  [ -f "$file" ] || return 0
+  grep -q "^${key}=.*://" "$file" 2>/dev/null || return 0
+  sed -E -i.bak "s|(^${key}=.*://[^/]*:)[0-9]+(/.*)|\\1${port}\\2|" "$file"
+  rm -f "$file.bak"
+}
+
 echo "Deriving ports from base $BASE_PORT:"
 echo "  WEB_APP_PORT=$WEB_APP_PORT"
 echo "  API_PORT=$API_PORT"
@@ -55,6 +80,13 @@ set_kv "$PWD/.env" WEB_ADMIN_PORT "$WEB_ADMIN_PORT"
 
 echo "Writing $PWD/api/.env (local, non-docker api run)..."
 set_kv "$PWD/api/.env" PORT "$API_PORT"
+# The API's own listen port isn't its only port dependency: for the local,
+# non-docker run it also dials Postgres/Redis directly over localhost, at
+# whatever host port they're published on — which just changed too. Missing
+# this meant a second worktree's non-docker `api` would silently keep talking
+# to the FIRST worktree's database and Redis/BullMQ queue instead of its own.
+set_kv "$PWD/api/.env" REDIS_PORT "$REDIS_PORT"
+set_url_port "$PWD/api/.env" DATABASE_URL "$POSTGRES_PORT"
 
 echo "Writing $PWD/web/packages/app/.env..."
 set_kv "$PWD/web/packages/app/.env" WEB_APP_PORT "$WEB_APP_PORT"
