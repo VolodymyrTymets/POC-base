@@ -7,3 +7,8 @@
 # Claude Code local/session state (per-developer, never shared)
 .claude/settings.local.json
 .claude/.state/
+
+# Root-level env, used only for docker-compose port interpolation (KAN-2) — per-worktree, never shared
+.env
+.env.*
+!.env.example
