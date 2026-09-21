@@ -2,6 +2,7 @@ import { Mutation, Args, Resolver } from '@nestjs/graphql';
 import { SignInInput } from './dto/sign-in.input';
 import { VerifyOtpInput } from './dto/verify-otp.input';
 import { SignUpInput } from './dto/sign-up.input';
+import { PasswordSignInInput } from './dto/password-sign-in.input';
 import { AuthTokensEntity } from './entities/auth-tokens.entity';
 import { OtpAuthStrategyService } from './services/otp-auth-strategy/otp-auth-strategy.service';
 import { JwtAuthStrategyService } from './services/jwt-auth-strategy/jwt-auth-strategy.service';
@@ -56,6 +57,15 @@ export class AuthResolver {
     @Args('signUpInput') signUpInput: SignUpInput,
   ): Promise<AuthTokensEntity> {
     return this.jwtAuthStrategyService.signUp(signUpInput);
+  }
+
+  @Mutation(() => AuthTokensEntity, {
+    description: 'Sign in with the email and password of a registered account',
+  })
+  signIn(
+    @Args('signInInput') signInInput: PasswordSignInInput,
+  ): Promise<AuthTokensEntity> {
+    return this.jwtAuthStrategyService.signIn(signInInput);
   }
 
   @Mutation(() => AuthTokensEntity, {

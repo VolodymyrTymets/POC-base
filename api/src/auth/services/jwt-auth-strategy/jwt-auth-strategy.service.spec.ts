@@ -15,6 +15,7 @@ import { GqlAuthGuard } from '../../guards/gql-auth.guard';
 import { AccountRoleModule } from '../../../account-role/account-role.module';
 import { AccountService } from '../../../account/account.service';
 import { AccountRoleType } from '../../../../generated/prisma/enums';
+import { INVALID_CREDENTIALS } from '../../../common/errors';
 
 describe('JwtAuthStrategyService', () => {
   let jwtAuthStrategyService: JwtAuthStrategyService;
@@ -169,6 +170,95 @@ describe('JwtAuthStrategyService', () => {
       expect(await prismaService.accountIdentity.count()).toBe(
         identitiesBefore,
       );
+    });
+  });
+
+  describe('signIn', () => {
+    const password = 'correct horse';
+    let email: string;
+    let emailCounter = 0;
+
+    beforeEach(async () => {
+      // DataCooker keeps rows between tests in a file, so each test gets its own email
+      email = `signin.user.${++emailCounter}@example.com`;
+      await jwtAuthStrategyService.signUp({ email, password });
+    });
+
+    it('should return tokens for the right email and password, ignoring email case', async () => {
+      const result = await jwtAuthStrategyService.signIn({
+        email: email.toUpperCase(),
+        password,
+      });
+
+      expect(result.accessToken.length).toBeGreaterThan(0);
+      expect(result.refreshToken.length).toBeGreaterThan(0);
+    });
+
+    it('should throw UnauthorizedException for a wrong password', async () => {
+      await expect(
+        jwtAuthStrategyService.signIn({ email, password: 'wrong password' }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw the same error for an unknown email as for a wrong password', async () => {
+      await expect(
+        jwtAuthStrategyService.signIn({ email, password: 'wrong password' }),
+      ).rejects.toThrow(INVALID_CREDENTIALS);
+      await expect(
+        jwtAuthStrategyService.signIn({
+          email: 'nobody@example.com',
+          password: 'wrong password',
+        }),
+      ).rejects.toThrow(INVALID_CREDENTIALS);
+    });
+
+    it('should throw UnauthorizedException for an account that only has an OTP identity', async () => {
+      const account = await createAccountWithIdentity('+8888888888');
+      await prismaService.accountProfile.update({
+        where: { accountId: account.id },
+        data: { email: 'otp.only@example.com' },
+      });
+
+      await expect(
+        jwtAuthStrategyService.signIn({
+          email: 'otp.only@example.com',
+          password,
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw UnauthorizedException for a soft-deleted account', async () => {
+      await prismaService.account.updateMany({
+        where: { AccountProfile: { email } },
+        data: { deleted: true },
+      });
+
+      await expect(
+        jwtAuthStrategyService.signIn({ email, password }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should not mark the phone as verified', async () => {
+      const account = await createAccountWithIdentity('+9999999999');
+      const passwordHash = await hash(password, 10);
+      await prismaService.accountProfile.update({
+        where: { accountId: account.id },
+        data: { email: 'with.phone@example.com' },
+      });
+      await prismaService.accountIdentity.update({
+        where: { accountId: account.id },
+        data: { hash: passwordHash },
+      });
+
+      await jwtAuthStrategyService.signIn({
+        email: 'with.phone@example.com',
+        password,
+      });
+
+      const profile = await prismaService.accountProfile.findFirstOrThrow({
+        where: { accountId: account.id },
+      });
+      expect(profile.isPhoneVerified).toBe(false);
     });
   });
 

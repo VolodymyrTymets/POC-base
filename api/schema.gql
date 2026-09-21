@@ -98,6 +98,9 @@ type Mutation {
   """Register a customer account with an email and password"""
   signUp(signUpInput: SignUpInput!): AuthTokensEntity!
 
+  """Sign in with the email and password of a registered account"""
+  signIn(signInInput: PasswordSignInInput!): AuthTokensEntity!
+
   """Refresh access token using a valid refresh token."""
   refreshToken: AuthTokensEntity!
   signOut: Boolean!
@@ -170,5 +173,13 @@ input SignUpInput {
   email: String!
 
   """password, 8 to 72 bytes"""
+  password: String!
+}
+
+input PasswordSignInInput {
+  """email the account signed up with"""
+  email: String!
+
+  """password"""
   password: String!
 }

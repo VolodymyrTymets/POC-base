@@ -4,7 +4,8 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { compare, genSalt, hash as bcryptHash } from 'bcrypt';
+import { randomBytes } from 'crypto';
+import { compare, genSalt, hash as bcryptHash, hashSync } from 'bcrypt';
 import { JwtStrategyService } from '../jwt-strategy/jwt-strategy.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -12,8 +13,12 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '../../../../generated/prisma/client';
 import { AccountService } from '../../../account/account.service';
 import { SignUpInput } from '../../dto/sign-up.input';
+import { PasswordSignInInput } from '../../dto/password-sign-in.input';
 import { AuthTokensEntity } from '../../entities/auth-tokens.entity';
-import { EMAIL_ALREADY_REGISTERED } from '../../../common/errors';
+import {
+  EMAIL_ALREADY_REGISTERED,
+  INVALID_CREDENTIALS,
+} from '../../../common/errors';
 import { normalizeEmail } from '../../../common/normalize-email';
 
 const PRISMA_UNIQUE_VIOLATION = 'P2002';
@@ -28,6 +33,13 @@ export class JwtAuthStrategyService extends JwtStrategyService {
   ) {
     super(prismaService, jwtService, configService);
   }
+
+  // Compared against when no real hash exists, so an unknown email costs the
+  // same bcrypt work as a wrong password and response time does not reveal it.
+  private readonly timingDummyHash = hashSync(
+    randomBytes(16).toString('hex'),
+    this.BCRYPT_ROUNDS,
+  );
 
   private async hashPassword(password: string) {
     const salt = await genSalt(this.BCRYPT_ROUNDS);
@@ -67,6 +79,33 @@ export class JwtAuthStrategyService extends JwtStrategyService {
       }
       throw error;
     }
+  }
+
+  async signIn(signInInput: PasswordSignInInput): Promise<AuthTokensEntity> {
+    const profile = await this.prismaService.accountProfile.findFirst({
+      where: {
+        email: normalizeEmail(signInInput.email),
+        deleted: false,
+        Account: { deleted: false },
+      },
+      select: {
+        accountId: true,
+        Account: { select: { AccountIdentity: true } },
+      },
+    });
+    const identity = profile?.Account.AccountIdentity;
+    // OTP-only accounts have no hash; they fail like any other bad credential.
+    const hash = identity && !identity.deleted ? identity.hash : null;
+
+    const passwordMatches = await compare(
+      signInInput.password,
+      hash ?? this.timingDummyHash,
+    );
+    if (!profile || !hash || !passwordMatches) {
+      throw new UnauthorizedException(INVALID_CREDENTIALS);
+    }
+
+    return this.refreshTokens(profile.accountId);
   }
 
   async validateRefreshToken(accountId: string, refreshToken: string) {
