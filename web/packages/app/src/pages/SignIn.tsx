@@ -11,6 +11,7 @@ import {
   submitButtonClass,
 } from '../components/form';
 import { takeSignInNotice } from '../notice';
+import { STORAGE_BLOCKED_MESSAGE } from '../messages';
 import { useSession } from '../session/SessionProvider';
 import { validateEmail } from '../validation';
 
@@ -42,7 +43,9 @@ export function SignIn() {
         throw new Error('signIn returned no data');
       }
       // Signing in flips isSignedIn, which redirects to /account above.
-      completeSignIn(data.signIn);
+      if (!completeSignIn(data.signIn)) {
+        setError(STORAGE_BLOCKED_MESSAGE);
+      }
     } catch (caught) {
       setError(getAuthErrorMessage(caught));
     }

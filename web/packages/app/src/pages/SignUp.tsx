@@ -4,6 +4,7 @@ import { getAuthErrorMessage } from '@web/shared/api/auth/error-message';
 import { SignUpMutation } from '@web/shared/api/auth/mutations';
 import { useMutation } from '@web/shared/api/react';
 import { Field, FormCard, FormError, submitButtonClass } from '../components/form';
+import { STORAGE_BLOCKED_MESSAGE } from '../messages';
 import { useSession } from '../session/SessionProvider';
 import { validateEmail, validateNewPassword } from '../validation';
 
@@ -33,7 +34,9 @@ export function SignUp() {
       if (!data) {
         throw new Error('signUp returned no data');
       }
-      completeSignIn(data.signUp);
+      if (!completeSignIn(data.signUp)) {
+        setError(STORAGE_BLOCKED_MESSAGE);
+      }
     } catch (caught) {
       setError(getAuthErrorMessage(caught));
     }

@@ -69,7 +69,9 @@ export const createSession = ({ uri, onSignedOut }: SessionOptions): Session => 
         accessToken: data.refreshToken.accessToken,
         refreshToken: data.refreshToken.refreshToken,
       };
-      setTokens(tokens);
+      if (!setTokens(tokens)) {
+        throw new Error('Could not store the refreshed tokens');
+      }
       return tokens;
     } catch (error) {
       await signOut();

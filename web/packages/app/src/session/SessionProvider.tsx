@@ -21,7 +21,8 @@ import { session, signedOutRedirect } from '../apollo';
 type SessionValue = {
   isSignedIn: boolean;
   email: string | null;
-  completeSignIn: (tokens: AuthTokens) => void;
+  // false when the browser refused to store the tokens
+  completeSignIn: (tokens: AuthTokens) => boolean;
   signOut: () => Promise<void>;
 };
 
@@ -44,9 +45,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const { data } = useQuery(AccountQuery, { skip: !isSignedIn });
 
-  const completeSignIn = useCallback((tokens: AuthTokens) => {
-    setTokens(tokens);
-  }, []);
+  const completeSignIn = useCallback(
+    (tokens: AuthTokens): boolean => setTokens(tokens),
+    [],
+  );
 
   const value = useMemo<SessionValue>(
     () => ({

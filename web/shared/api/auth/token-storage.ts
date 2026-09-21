@@ -31,14 +31,18 @@ export const getAccessToken = (): string | null => read(ACCESS_TOKEN_KEY);
 
 export const getRefreshToken = (): string | null => read(REFRESH_TOKEN_KEY);
 
-export const setTokens = (tokens: AuthTokens): void => {
+// Returns false when the tokens could not be stored (blocked site data, full
+// quota) so the caller can tell the user instead of showing a dead button.
+export const setTokens = (tokens: AuthTokens): boolean => {
   try {
     localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
   } catch (error) {
     console.error('Could not write the auth tokens to localStorage', error);
+    return false;
   }
   notify();
+  return true;
 };
 
 export const clearTokens = (): void => {

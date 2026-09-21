@@ -9,7 +9,7 @@ import {
 import { SetContextLink } from '@apollo/client/link/context';
 import { ErrorLink } from '@apollo/client/link/error';
 import { createSession, type Session } from './auth/session';
-import { getAccessToken } from './auth/token-storage';
+import { getAccessToken, subscribeToTokens } from './auth/token-storage';
 
 // The API answers a wrong password (INVALID_CREDENTIALS), a bad reset token
 // (INVALID_RESET_TOKEN) and an expired access token with the same
@@ -29,17 +29,28 @@ const AUTH_OPERATION_NAMES: ReadonlySet<string> = new Set([
 // is an ordinary error the page must show, not a reason to sign out.
 const UNAUTHORIZED_MESSAGE = 'Unauthorized';
 
+type GraphQLErrors = ReadonlyArray<{
+  message: string;
+  extensions?: Record<string, unknown>;
+}>;
+
+const hasRejectedToken = (errors: GraphQLErrors | undefined): boolean =>
+  errors?.some(
+    (graphQLError) =>
+      graphQLError.extensions?.code === 'UNAUTHENTICATED' &&
+      graphQLError.message === UNAUTHORIZED_MESSAGE,
+  ) ?? false;
+
+const isRefreshable = (operationName: string | undefined): boolean =>
+  !(operationName && AUTH_OPERATION_NAMES.has(operationName));
+
 const isRejectedAccessToken = (
   error: unknown,
   operationName: string | undefined,
 ): boolean =>
-  !(operationName && AUTH_OPERATION_NAMES.has(operationName)) &&
+  isRefreshable(operationName) &&
   CombinedGraphQLErrors.is(error) &&
-  error.errors.some(
-    (graphQLError) =>
-      graphQLError.extensions?.code === 'UNAUTHENTICATED' &&
-      graphQLError.message === UNAUTHORIZED_MESSAGE,
-  );
+  hasRejectedToken(error.errors);
 
 export type ApolloClientOptions = {
   uri: string;
@@ -57,15 +68,21 @@ export const createApolloClient = ({
 }: ApolloClientOptions): AuthenticatedApollo => {
   const cache = new InMemoryCache();
 
-  const session = createSession({
-    uri,
-    onSignedOut: () => {
-      // A cached `account` result must not outlive the session it belongs to.
+  const session = createSession({ uri, onSignedOut });
+
+  // A cached `account` result must not outlive the session it belongs to, in
+  // this tab or (through the storage event) any other: clear the cache when a
+  // session starts or ends. A token *rotation* keeps a session, so it keeps the
+  // cache too.
+  let hadSession = getAccessToken() !== null;
+  subscribeToTokens(() => {
+    const hasSession = getAccessToken() !== null;
+    if (hasSession !== hadSession) {
+      hadSession = hasSession;
       client.clearStore().catch((error: unknown) => {
-        console.error('Could not clear the Apollo cache on sign-out', error);
+        console.error('Could not clear the Apollo cache', error);
       });
-      onSignedOut();
-    },
+    }
   });
 
   const authLink = new SetContextLink(({ headers }) => {
@@ -86,15 +103,34 @@ export const createApolloClient = ({
       return undefined;
     }
     return new Observable<ApolloLink.Result>((subscriber) => {
+      let cancelled = false;
       let retry: { unsubscribe: () => void } | undefined;
       session.refresh().then(
         () => {
-          retry = forward(operation).subscribe(subscriber);
+          if (cancelled) {
+            return;
+          }
+          retry = forward(operation).subscribe({
+            next: (result) => {
+              // A fresh token that is rejected too (account removed, ...) means
+              // the session is unusable: end it instead of leaving the user in
+              // a signed-in-looking page that errors on every call.
+              if (hasRejectedToken(result.errors)) {
+                void session.signOut();
+              }
+              subscriber.next(result);
+            },
+            error: (retryError: unknown) => subscriber.error(retryError),
+            complete: () => subscriber.complete(),
+          });
         },
         // The session already signed the user out; surface the original error.
         () => subscriber.error(error),
       );
-      return () => retry?.unsubscribe();
+      return () => {
+        cancelled = true;
+        retry?.unsubscribe();
+      };
     });
   });
 

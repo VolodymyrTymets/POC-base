@@ -23,7 +23,9 @@ async function bootstrap() {
   // Base64 adds ~33% over raw bytes; leave headroom for the rest of the
   // GraphQL JSON envelope around `content`.
   app.useBodyParser('json', { limit: Math.ceil(fileMaxSize * 1.4) });
-  app.enableCors({ origin: parseCorsOrigins(process.env.CORS_ORIGINS) });
+  app.enableCors({
+    origin: parseCorsOrigins(configService.get<string>('CORS_ORIGINS')),
+  });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   await app.listen(process.env.PORT ?? 3001);
 }

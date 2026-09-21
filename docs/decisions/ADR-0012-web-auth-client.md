@@ -55,6 +55,9 @@ real GraphQL client. No web precedent existed, so the choices below are new.
   token to an httpOnly cookie.
 - The API's existing weakness with refresh tokens (ADR-0011's open risk: a bcrypt hash of the JWT's first
   72 bytes) is not changed here.
+- Refresh is single-flight per tab only. Two tabs refreshing at once means one presents an already-rotated
+  refresh token and fails, which signs out the shared `localStorage` session in both (the API stores one
+  refresh token per account, ADR-0011).
 - No web tests yet (KAN-11); the flows were verified by hand in a browser (see the KAN-13 PR).
 
 ## Consequences
