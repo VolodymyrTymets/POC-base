@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UnauthorizedException } from '@nestjs/common';
-import { hash } from 'bcrypt';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { compare, hash } from 'bcrypt';
 import { JwtAuthStrategyService } from './jwt-auth-strategy.service';
 import { PrismaModule } from '../../../prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
@@ -13,10 +13,13 @@ import { PrismaAdapterFactory } from '../../../prisma/prisma.adapter.factory';
 import { JwtStrategy } from '../../strategies/jwt.strategy';
 import { GqlAuthGuard } from '../../guards/gql-auth.guard';
 import { AccountRoleModule } from '../../../account-role/account-role.module';
+import { AccountService } from '../../../account/account.service';
+import { AccountRoleType } from '../../../../generated/prisma/enums';
 
 describe('JwtAuthStrategyService', () => {
   let jwtAuthStrategyService: JwtAuthStrategyService;
   let prismaService: PrismaService;
+  let accountService: AccountService;
   const dataCooker = new DataCooker();
 
   beforeAll(async () => {
@@ -39,7 +42,12 @@ describe('JwtAuthStrategyService', () => {
           signOptions: { expiresIn: '15m' },
         }),
       ],
-      providers: [JwtAuthStrategyService, JwtStrategy, GqlAuthGuard],
+      providers: [
+        JwtAuthStrategyService,
+        AccountService,
+        JwtStrategy,
+        GqlAuthGuard,
+      ],
     })
       .overrideProvider(PrismaAdapterFactory)
       .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
@@ -49,6 +57,7 @@ describe('JwtAuthStrategyService', () => {
       JwtAuthStrategyService,
     );
     prismaService = app.get<PrismaService>(PrismaService);
+    accountService = app.get<AccountService>(AccountService);
   });
 
   afterAll(async () => {
@@ -70,6 +79,97 @@ describe('JwtAuthStrategyService', () => {
 
   it('should be defined', () => {
     expect(jwtAuthStrategyService).toBeDefined();
+  });
+
+  describe('signUp', () => {
+    it('should create a customer account with a bcrypt password hash and return tokens', async () => {
+      const result = await jwtAuthStrategyService.signUp({
+        email: '  New.User@Example.com ',
+        password: 'correct horse',
+      });
+
+      const profile = await prismaService.accountProfile.findFirstOrThrow({
+        where: { email: 'new.user@example.com' },
+        include: {
+          Account: {
+            include: {
+              AccountIdentity: true,
+              AccountOnRole: { include: { AccountRole: true } },
+            },
+          },
+        },
+      });
+      const identity = profile.Account.AccountIdentity;
+      expect(result.accessToken.length).toBeGreaterThan(0);
+      expect(result.refreshToken.length).toBeGreaterThan(0);
+      expect(identity?.hash).toBeDefined();
+      expect(identity?.hash).not.toBe('correct horse');
+      expect(await compare('correct horse', identity?.hash ?? '')).toBe(true);
+      expect(
+        profile.Account.AccountOnRole.map((r) => r.AccountRole.type),
+      ).toEqual([AccountRoleType.CUSTOMER]);
+    });
+
+    it('should not mark the phone as verified', async () => {
+      await jwtAuthStrategyService.signUp({
+        email: 'unverified@example.com',
+        password: 'correct horse',
+      });
+
+      const profile = await prismaService.accountProfile.findFirstOrThrow({
+        where: { email: 'unverified@example.com' },
+      });
+      expect(profile.isPhoneVerified).toBe(false);
+    });
+
+    it('should reject an email that is already registered, ignoring case', async () => {
+      await jwtAuthStrategyService.signUp({
+        email: 'taken@example.com',
+        password: 'correct horse',
+      });
+
+      await expect(
+        jwtAuthStrategyService.signUp({
+          email: 'TAKEN@example.com',
+          password: 'another password',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should keep the email reserved when its profile is soft-deleted', async () => {
+      await jwtAuthStrategyService.signUp({
+        email: 'gone@example.com',
+        password: 'correct horse',
+      });
+      await prismaService.accountProfile.updateMany({
+        where: { email: 'gone@example.com' },
+        data: { deleted: true },
+      });
+
+      await expect(
+        jwtAuthStrategyService.signUp({
+          email: 'gone@example.com',
+          password: 'correct horse',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should leave no partial account behind when a nested write fails', async () => {
+      // Calling createPasswordAccount directly skips signUp's pre-check, so the
+      // second call fails inside the nested create on the @unique email.
+      await accountService.createPasswordAccount('race@example.com', 'h', 's');
+      const accountsBefore = await prismaService.account.count();
+      const identitiesBefore = await prismaService.accountIdentity.count();
+
+      await expect(
+        accountService.createPasswordAccount('race@example.com', 'h', 's'),
+      ).rejects.toThrow();
+
+      expect(await prismaService.account.count()).toBe(accountsBefore);
+      expect(await prismaService.accountIdentity.count()).toBe(
+        identitiesBefore,
+      );
+    });
   });
 
   describe('validateRefreshToken', () => {

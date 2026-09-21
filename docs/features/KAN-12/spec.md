@@ -43,7 +43,8 @@ new mutation ships with an e2e spec that a fork can copy.
 ## Edge cases
 | Case | Expected behaviour | Decided by |
 |------|--------------------|-----------|
-| Email differs only by case / whitespace | Trimmed + lowercased on write and lookup | assumption |
+| Email differs only by case | Lowercased on write and lookup | assumption |
+| Email has leading/trailing whitespace | Rejected by `@IsEmail` before the service runs (found while executing R3); the service still trims defensively | code finding |
 | Password > 72 bytes | Rejected by validation (bcrypt silently truncates beyond 72) | assumption |
 | OTP-only account (no `hash`) tries `signIn` | Same generic `UNAUTHENTICATED` | assumption |
 | OTP-only account with an email uses `restorePassword` | Allowed — this is how it gets a first password | assumption |

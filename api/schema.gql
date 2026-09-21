@@ -95,6 +95,9 @@ type Mutation {
   """Exchange a valid OTP code for access and refresh tokens"""
   verifyOtp(verifyOtpInput: VerifyOtpInput!): AuthTokensEntity!
 
+  """Register a customer account with an email and password"""
+  signUp(signUpInput: SignUpInput!): AuthTokensEntity!
+
   """Refresh access token using a valid refresh token."""
   refreshToken: AuthTokensEntity!
   signOut: Boolean!
@@ -160,4 +163,12 @@ input SignInInput {
 input VerifyOtpInput {
   phoneNumber: String!
   code: String!
+}
+
+input SignUpInput {
+  """email, used as the login identifier"""
+  email: String!
+
+  """password, 8 to 72 bytes"""
+  password: String!
 }

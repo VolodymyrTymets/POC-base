@@ -11,7 +11,7 @@ export class JwtStrategyService {
     protected readonly jwtService: JwtService,
     protected readonly configService: ConfigService,
   ) {}
-  private readonly BCRYPT_ROUNDS = 10;
+  protected readonly BCRYPT_ROUNDS = 10;
 
   async refreshTokens(accountId: string) {
     const payload = {
