@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
-import { compare, genSalt, hash as bcryptHash, hashSync } from 'bcrypt';
+import { compare, genSalt, hash as bcryptHash } from 'bcrypt';
 import { JwtStrategyService } from '../jwt-strategy/jwt-strategy.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -48,13 +48,6 @@ export class JwtAuthStrategyService extends JwtStrategyService {
   private hashResetToken(token: string) {
     return createHash('sha256').update(token).digest('hex');
   }
-
-  // Compared against when no real hash exists, so an unknown email costs the
-  // same bcrypt work as a wrong password and response time does not reveal it.
-  private readonly timingDummyHash = hashSync(
-    randomBytes(16).toString('hex'),
-    this.BCRYPT_ROUNDS,
-  );
 
   private async hashPassword(password: string) {
     const salt = await genSalt(this.BCRYPT_ROUNDS);
@@ -110,13 +103,12 @@ export class JwtAuthStrategyService extends JwtStrategyService {
     });
     const identity = profile?.Account.AccountIdentity;
     // OTP-only accounts have no hash; they fail like any other bad credential.
-    const hash = identity && !identity.deleted ? identity.hash : null;
+    if (!profile || !identity || identity.deleted || !identity.hash) {
+      throw new UnauthorizedException(INVALID_CREDENTIALS);
+    }
 
-    const passwordMatches = await compare(
-      signInInput.password,
-      hash ?? this.timingDummyHash,
-    );
-    if (!profile || !hash || !passwordMatches) {
+    const passwordMatches = await compare(signInInput.password, identity.hash);
+    if (!passwordMatches) {
       throw new UnauthorizedException(INVALID_CREDENTIALS);
     }
 
@@ -133,11 +125,15 @@ export class JwtAuthStrategyService extends JwtStrategyService {
 
     // An OTP-only account has no hash yet; it sets a first password through
     // restorePassword, so here it fails like any other wrong password.
+    if (!identity?.hash) {
+      throw new UnauthorizedException(INVALID_CREDENTIALS);
+    }
+
     const passwordMatches = await compare(
       changePasswordInput.currentPassword,
-      identity?.hash ?? this.timingDummyHash,
+      identity.hash,
     );
-    if (!identity?.hash || !passwordMatches) {
+    if (!passwordMatches) {
       throw new UnauthorizedException(INVALID_CREDENTIALS);
     }
 

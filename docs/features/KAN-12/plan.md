@@ -76,7 +76,9 @@ not implemented, not as rejected, so this needs a new ADR (R8), not a reopened d
 - test: `api/test/auth/sign-in.e2e-spec.ts` (AC3: ok, wrong password, unknown email, OTP-only account —
   identical `UNAUTHENTICATED`)
 - executed how: `signUp` then `signIn` against the running server; use the token on the `account` query
-- risk: unknown-email path must still run a dummy bcrypt compare to avoid a timing side channel
+- risk: **changed in PR review** — the plan kept a dummy bcrypt compare so an unknown email costs the same
+  as a wrong password; the reviewer asked to drop it and throw `INVALID_CREDENTIALS` as soon as there is
+  no hash (recorded as an accepted risk in ADR-0011)
 
 ### R5 — `changePassword` (M)
 - files: `api/src/auth/dto/change-password.input.ts` (new), `jwt-auth-strategy.service.ts` (change),

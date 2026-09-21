@@ -23,8 +23,9 @@ substitute (`BUSINESS_MODEL.md` goal 2). This is additive: it does not reopen AD
   30 minute expiry, single use. Consuming it is one conditional `updateMany`, so of two concurrent
   resets only one wins. A new `restorePassword` replaces a live token; a password change clears it.
 - **No user enumeration on the read side:** `signIn` answers a wrong password, an unknown email, an
-  OTP-only account and a soft-deleted account with the same `INVALID_CREDENTIALS` error (a dummy bcrypt
-  compare keeps the timing alike); `restorePassword` answers every email the same way.
+  OTP-only account and a soft-deleted account with the same `INVALID_CREDENTIALS` error;
+  `restorePassword` answers every email the same way. Response timing is deliberately not equalised (see
+  the accepted risks).
 - **The API never returns the reset token.** `restorePassword` answers `{ success: true }` for every
   well-formed request. In local/development/test a developer reads the token from the email worker's log
   (a self-review found that echoing it in the response would let anyone take over any account on a host
@@ -52,6 +53,7 @@ its own ticket, not yet filed.
 | No rate limiting or lockout on `signIn`, `signUp`, `restorePassword` | Out of scope for the ticket; a fork exposed to real traffic must add it |
 | No email verification on `signUp` — anyone can register or squat an email; `updateAccountProfile` can also set one | Out of scope; `@unique` then blocks the real owner |
 | A duplicate `signUp` reveals that an email is registered | Unavoidable for a sign-up that reports conflicts |
+| `signIn` and `changePassword` return as soon as an account has no password hash, and skip the bcrypt compare, so their response time can reveal that an email exists but has no password (unknown email or OTP-only account, versus a wrong password) | Decided by volodymyr in PR review: no timing-equalising dummy hash, keep the code simple |
 | `restorePassword` does more work for a registered email than an unknown one (timing) | Not equalised; responses are identical |
 | An access token stays valid after a password change — 15 minutes by default in code, but `api/.env.example` sets `JWT_ACCESS_TOKEN_EXPIRES_IN=55min` | JWTs are stateless in this base; a fork should set the template to 15m |
 | The plaintext reset token and the email travel in BullMQ job data (Redis) | The worker needs them to build the message; jobs are removed on completion and failed ones after an hour |
