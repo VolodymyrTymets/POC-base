@@ -7,7 +7,6 @@ import { ChangePasswordInput } from './dto/change-password.input';
 import { RestorePasswordInput } from './dto/restore-password.input';
 import { ResetPasswordInput } from './dto/reset-password.input';
 import { RestorePasswordEntity } from './entities/restore-password.entity';
-import { ConfigService } from '@nestjs/config';
 import { AuthTokensEntity } from './entities/auth-tokens.entity';
 import { OtpAuthStrategyService } from './services/otp-auth-strategy/otp-auth-strategy.service';
 import { JwtAuthStrategyService } from './services/jwt-auth-strategy/jwt-auth-strategy.service';
@@ -25,14 +24,7 @@ export class AuthResolver {
     private readonly authService: AuthService,
     private readonly otpAuthStrategyService: OtpAuthStrategyService,
     private readonly jwtAuthStrategyService: JwtAuthStrategyService,
-    private readonly configService: ConfigService,
   ) {}
-
-  private isDevelopmentEnvironment() {
-    return ['development', 'local', 'test'].includes(
-      this.configService.get<string>('NODE_ENV') ?? '',
-    );
-  }
 
   @Mutation(() => SignInOtpEntity, {
     description: 'Request a one-time SMS code for a phone number',
@@ -92,17 +84,13 @@ export class AuthResolver {
 
   @Mutation(() => RestorePasswordEntity, {
     description:
-      'Email a password reset token; the answer is the same for unknown emails',
+      'Email a password reset token; the answer is the same for unknown emails and never contains the token',
   })
   async restorePassword(
     @Args('restorePasswordInput') restorePasswordInput: RestorePasswordInput,
   ): Promise<RestorePasswordEntity> {
-    const token =
-      await this.jwtAuthStrategyService.restorePassword(restorePasswordInput);
-    return {
-      success: true,
-      ...(token && this.isDevelopmentEnvironment() ? { token } : {}),
-    };
+    await this.jwtAuthStrategyService.restorePassword(restorePasswordInput);
+    return { success: true };
   }
 
   @Mutation(() => Boolean, {

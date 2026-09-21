@@ -36,6 +36,9 @@ export class EmailNotifierService implements NotifierServiceInterface {
     await this.emailQueue.add(Events.PasswordResetMessage, message, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 1000 },
+      // job data holds the email and the plaintext token: do not keep it around
+      removeOnComplete: true,
+      removeOnFail: { age: 60 * 60 },
     });
   }
 }

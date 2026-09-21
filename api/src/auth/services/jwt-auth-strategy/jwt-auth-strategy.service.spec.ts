@@ -339,6 +339,29 @@ describe('JwtAuthStrategyService', () => {
       expect(after.refreshToken).toBeNull();
     });
 
+    it('should clear a pending OTP like signOut does', async () => {
+      await prismaService.accountIdentity.update({
+        where: { accountId },
+        data: {
+          otpHash: 'pending-otp',
+          otpSalt: 'salt',
+          otpExpiresAt: new Date(Date.now() + 60_000),
+        },
+      });
+
+      await jwtAuthStrategyService.changePassword(accountId, {
+        currentPassword: password,
+        newPassword: 'battery staple',
+      });
+
+      const after = await prismaService.accountIdentity.findFirstOrThrow({
+        where: { accountId },
+      });
+      expect(after.otpHash).toBeNull();
+      expect(after.otpSalt).toBeNull();
+      expect(after.otpExpiresAt).toBeNull();
+    });
+
     it('should invalidate a pending password-reset token', async () => {
       await prismaService.accountIdentity.update({
         where: { accountId },
@@ -441,6 +464,18 @@ describe('JwtAuthStrategyService', () => {
         ).toBe(identitiesBefore);
       });
 
+      it('should not revive a soft-deleted identity: it is treated as an unknown email', async () => {
+        await prismaService.accountIdentity.update({
+          where: { accountId },
+          data: { deleted: true },
+        });
+
+        const token = await jwtAuthStrategyService.restorePassword({ email });
+
+        expect(token).toBeNull();
+        expect((await identityOf(accountId)).resetTokenHash).toBeNull();
+      });
+
       it('should replace a token that is still live', async () => {
         const first = await jwtAuthStrategyService.restorePassword({ email });
         const second = await jwtAuthStrategyService.restorePassword({ email });
@@ -501,6 +536,23 @@ describe('JwtAuthStrategyService', () => {
           password: 'battery staple',
         });
         expect(tokens.accessToken.length).toBeGreaterThan(0);
+      });
+
+      it('should clear a pending OTP when the password is reset', async () => {
+        await prismaService.accountIdentity.update({
+          where: { accountId },
+          data: { otpHash: 'pending-otp', otpExpiresAt: new Date(Date.now() + 60_000) },
+        });
+        const token = await jwtAuthStrategyService.restorePassword({ email });
+
+        await jwtAuthStrategyService.resetPassword({
+          token: token ?? '',
+          newPassword: 'battery staple',
+        });
+
+        const identity = await identityOf(accountId);
+        expect(identity.otpHash).toBeNull();
+        expect(identity.otpExpiresAt).toBeNull();
       });
 
       it('should reject a token that was already used', async () => {

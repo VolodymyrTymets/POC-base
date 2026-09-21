@@ -7,7 +7,8 @@ Approved-by: volodymyr · 2026-09-21
 
 Pattern followed: `api/src/auth/services/otp-auth-strategy/otp-auth-strategy.service.ts` +
 `api/src/auth/auth.resolver.ts` (`signInOtp`/`verifyOtp`) — strategy service extending
-`JwtStrategyService`, thin resolver, DTOs with class-validator, dev-only secret echo gated on `NODE_ENV`.
+`JwtStrategyService`, thin resolver, DTOs with class-validator (the dev-only secret echo of `signInOtp` was
+deliberately not copied for the reset token — see R7).
 Notification path follows `SmsNotifierService` → `sms-sender` worker. E2E follows
 `api/test/auth/sign-in-otp.e2e-spec.ts` (`DataCooker` + PGlite, real DB). ADR-0004 lists password auth as
 not implemented, not as rejected, so this needs a new ADR (R8), not a reopened decision.
@@ -114,10 +115,13 @@ not implemented, not as rejected, so this needs a new ADR (R8), not a reopened d
 - layer: resolver → service → notifier
 - test: `api/test/auth/restore-password.e2e-spec.ts` (AC6, AC7: unknown email indistinguishable, expired
   token via DB-set expiry, reused token, new password works, refresh token revoked)
-- executed how: running server: restore → read dev-only `token` → reset → sign-in with new password
-- risk: token echoed in the response only under local/development/test, mirroring `signInOtp` but reading
-  `NODE_ENV` via `ConfigService` (backend-core 7), not `process.env`; also asserts a second
-  `restorePassword` replaces a live token
+- executed how: running server: restore → read the token from the email worker's log → reset → sign-in
+  with new password
+- risk: **changed during self-review** — the plan echoed the token in the response under
+  local/development/test (mirroring `signInOtp`), but the security review showed that is an unauthenticated
+  account takeover on any host using the shipped `.env` templates (`NODE_ENV=local`). The API now never
+  returns the token; e2e reads it from the notifier call, developers from the worker log (ADR-0011).
+  Also asserts a second `restorePassword` replaces a live token
 
 ### R8 — Docs (S)
 - files: `docs/decisions/ADR-0011-password-auth.md` (new), `docs/decisions/ADR-0004-otp-jwt-auth.md`
@@ -133,7 +137,7 @@ not implemented, not as rejected, so this needs a new ADR (R8), not a reopened d
 ## Risks
 | Risk | Impact | Cheapest way to find out early |
 |------|--------|-------------------------------|
-| Log-only email worker deviates from the BUSINESS_MODEL "real sending" non-negotiable | Reset flow only usable where the token is logged/echoed (local/dev/test) | **Decided by volodymyr, 2026-09-21:** POC stage, log to console, no real provider now; recorded in ADR-0011 with a follow-up ticket for a real provider |
+| Log-only email worker deviates from the BUSINESS_MODEL "real sending" non-negotiable | Reset flow only usable where the worker logs the token (local/dev/test) | **Decided by volodymyr, 2026-09-21:** POC stage, log to console, no real provider now; recorded in ADR-0011 with a follow-up ticket for a real provider |
 | Auth/security decisions (hashing, token design, no rate limiting) | Weak default for every fork (rule F2) | Human reads spec "Open questions" #5 at approval |
 | Unique-email migration fails on existing rows | Blocks R1 and everything after | `SELECT email, count(*) … HAVING count(*) > 1` on the local DB before migrating |
 | Baseline `tsc`/e2e may already fail (docs cite KAN-4/68 type errors; the `Customers` grep now finds nothing) | Can't tell new failures from old | Run typecheck + unit + e2e once before R1 and record the baseline |

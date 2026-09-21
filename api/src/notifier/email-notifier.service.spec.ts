@@ -51,7 +51,7 @@ describe('EmailNotifierService', () => {
       data: { lastLoginAt: new Date(), AccountProfile: { create: profile } },
     });
 
-  it('queues a password-reset job for the account email with retry backoff', async () => {
+  it('queues a password-reset job for the account email with backoff and short retention', async () => {
     const account = await createAccount({ email: 'notify.me@example.com' });
 
     await emailNotifierService.notifyAboutPasswordReset(account, 'token-123');
@@ -64,7 +64,12 @@ describe('EmailNotifierService', () => {
         email: 'notify.me@example.com',
         token: 'token-123',
       },
-      { attempts: 3, backoff: { type: 'exponential', delay: 1000 } },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+        removeOnComplete: true,
+        removeOnFail: { age: 3600 },
+      },
     );
   });
 

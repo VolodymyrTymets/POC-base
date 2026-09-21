@@ -25,6 +25,14 @@ substitute (`BUSINESS_MODEL.md` goal 2). This is additive: it does not reopen AD
 - **No user enumeration on the read side:** `signIn` answers a wrong password, an unknown email, an
   OTP-only account and a soft-deleted account with the same `INVALID_CREDENTIALS` error (a dummy bcrypt
   compare keeps the timing alike); `restorePassword` answers every email the same way.
+- **The API never returns the reset token.** `restorePassword` answers `{ success: true }` for every
+  well-formed request. In local/development/test a developer reads the token from the email worker's log
+  (a self-review found that echoing it in the response would let anyone take over any account on a host
+  started from the shipped `.env` templates, which all set `NODE_ENV=local`).
+- **Profile email** (`updateAccountProfile`) is validated, trimmed + lowercased and a duplicate maps to
+  `EMAIL_ALREADY_REGISTERED`, so an email set there can always be found by the password flows.
+- **A password change or reset also clears any pending OTP**, as `signOut` does. Passwords with control
+  characters are rejected (a NUL-only password hashes like the empty string).
 - **`isPhoneVerified`** is now set by `verifyOtp` only. Token issuance is shared with password sign-in
   and proves nothing about a phone (two existing assertions were flipped for this, KAN-12 R2).
 - **Email delivery:** `NotifierTypes.EMAIL` → `EmailNotifierService` → BullMQ `EMAIL_QUEUE` (exponential
@@ -45,8 +53,12 @@ its own ticket, not yet filed.
 | No email verification on `signUp` — anyone can register or squat an email; `updateAccountProfile` can also set one | Out of scope; `@unique` then blocks the real owner |
 | A duplicate `signUp` reveals that an email is registered | Unavoidable for a sign-up that reports conflicts |
 | `restorePassword` does more work for a registered email than an unknown one (timing) | Not equalised; responses are identical |
-| An access token stays valid for up to 15 minutes after a password change | JWTs are stateless in this base |
-| The plaintext reset token travels in BullMQ job data (Redis) | The worker needs it to build the message |
+| An access token stays valid after a password change — 15 minutes by default in code, but `api/.env.example` sets `JWT_ACCESS_TOKEN_EXPIRES_IN=55min` | JWTs are stateless in this base; a fork should set the template to 15m |
+| The plaintext reset token and the email travel in BullMQ job data (Redis) | The worker needs them to build the message; jobs are removed on completion and failed ones after an hour |
+| **Changing the login email through `updateAccountProfile` needs no re-authentication.** Anyone holding a live access token can set their own email on the account and then `restorePassword`, taking it over permanently | **Open — decision needed (F2).** Fixing it changes the profile-update contract (e.g. require `currentPassword`) |
+| **Repeated `restorePassword` calls keep replacing the live token**, so with no rate limiting an attacker can keep invalidating the token a victim was just emailed (and flood their inbox) | **Open — decision needed.** Options: keep a live token and refuse a new one for a cooldown, or allow several live tokens per account |
+| Email normalisation is trim + lowercase only: NFC/NFD forms of one address are two accounts, and a few non-ASCII characters lowercase onto ASCII | No takeover (mail goes to the stored string); add `normalize('NFKC')` if lookalikes matter to a fork |
+| The migration adds `UNIQUE` on `AccountProfile.email` without lowercasing existing rows | No such data in this base; a fork with data must backfill `lower(trim(email))` first |
 | `NotifierService` fan-out logs a failed send and does not rethrow | A throw only for registered emails would leak which exist |
 | `changePassword` has no `*AssertService` (rule P3) | The target is always the caller's own identity from the token, never a client-supplied id — same as `signOut` |
 | **Refresh tokens are stored as a bcrypt hash of the whole JWT, and bcrypt only reads the first 72 bytes**, which are identical for every token of one account. Clearing the stored hash (sign-out, password change, reset) does reject older tokens, but the next sign-in stores a new hash that the older, still-valid tokens match again | **Existing behaviour, also affects OTP. Found live in KAN-12 and left open** — fixing it changes the OTP/refresh flows (rule B4), and it is a security decision (F2). Tracked as spec open question 6 |

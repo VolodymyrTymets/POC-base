@@ -21,6 +21,7 @@ export class EmailSenderService extends WorkerHost {
     super();
   }
 
+  // job.data is typed `any` by BullMQ; the producer (EmailNotifierService) owns the shape.
   private onPasswordResetMessage(data: PasswordResetMessageDataType) {
     const environment = this.configService.get<string>('NODE_ENV') ?? '';
     if (LOG_MESSAGE_ENVIRONMENTS.includes(environment)) {
@@ -38,7 +39,7 @@ export class EmailSenderService extends WorkerHost {
   async process(job: Pick<Job, 'name' | 'data'>) {
     switch (job.name) {
       case Events.PasswordResetMessage:
-        this.onPasswordResetMessage(job.data as PasswordResetMessageDataType);
+        this.onPasswordResetMessage(job.data);
         break;
     }
   }

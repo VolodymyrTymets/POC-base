@@ -64,9 +64,6 @@ type RestorePasswordEntity {
   Always true for a well-formed request, whether or not the email is registered
   """
   success: Boolean!
-
-  """Reset token, only returned in local/development/test"""
-  token: String
 }
 
 type AuthTokensEntity {
@@ -115,7 +112,7 @@ type Mutation {
   refreshToken: AuthTokensEntity!
 
   """
-  Email a password reset token; the answer is the same for unknown emails
+  Email a password reset token; the answer is the same for unknown emails and never contains the token
   """
   restorePassword(restorePasswordInput: RestorePasswordInput!): RestorePasswordEntity!
 

@@ -53,7 +53,12 @@ export class NotifierService implements NotifierServiceInterface {
       this.notifiers
         .filter((n) => this.filterNotifiersByNeeds(n, types))
         .map((notifier) => notifier.notifyAboutTOTPCode(account, code, types)),
-    ).catch((error) => console.error('Error in notifyAboutTOTPCode', error));
+    ).catch((error: unknown) =>
+      this.logger.error(
+        'Error in notifyAboutTOTPCode',
+        error instanceof Error ? error.stack : String(error),
+      ),
+    );
   }
 
   // A failure here is logged, not rethrown: the caller answers identically

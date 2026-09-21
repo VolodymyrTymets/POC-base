@@ -1,5 +1,6 @@
 import { InputType, Field } from '@nestjs/graphql';
 import {
+  IsEmail,
   MaxLength,
   IsString,
   IsOptional,
@@ -21,9 +22,11 @@ export class UpdateAccountProfileInput {
   @Field(() => String, { nullable: true, description: 'lastName' })
   lastName?: string;
 
-  @IsString()
+  // The email is also the password-login identifier, so it is validated like the
+  // auth DTOs (require_tld is off only so addresses like `test@test` keep working).
   @IsOptional()
-  @MaxLength(50)
+  @IsEmail({ require_tld: false })
+  @MaxLength(254)
   @Field(() => String, { nullable: true, description: 'email' })
   email?: string;
 

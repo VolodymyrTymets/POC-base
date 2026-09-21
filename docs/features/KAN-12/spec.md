@@ -62,4 +62,6 @@ after the next sign-in — see open question 6.
 | 3 | Reset-token TTL | 30 minutes | no |
 | 4 | Min password length | 8 | no |
 | 5 | Auth/security decisions (F2) | Plan approval is the human sign-off for the security choices above | yes — at approval |
+| 7 | Should changing the login email via `updateAccountProfile` require the current password? Today a live access token is enough, which combined with `restorePassword` is a permanent account takeover (self-review, security) | Not changed here — it alters the profile-update contract | **yes** |
+| 8 | Should repeated `restorePassword` calls keep replacing a live token (lets an attacker keep invalidating the victim's token)? | Kept as specified; noted in ADR-0011 | **yes** |
 | 6 | Refresh tokens are stored as a bcrypt hash of the whole JWT, but bcrypt only reads the first 72 bytes, which are identical for every token of one account. Clearing the stored hash rejects old tokens, but the next sign-in stores a new hash that the old tokens match again (found while running R5 live, existing behaviour, also affects OTP). Fix in this PR (hash refresh tokens with sha256) or a separate ticket? | Not fixed here (B4/F2); AC4/AC7 hold literally, revocation lasts only until the next sign-in | **yes** |

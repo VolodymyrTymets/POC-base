@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PrismaAdapterFactory } from '../prisma/prisma.adapter.factory';
 import { AccountRoleModule } from '../account-role/account-role.module';
 import { FileAssertService } from '../files/services/file-assert.service';
+import { ConflictException } from '@nestjs/common';
 
 describe('AccountProfileService', () => {
   let service: AccountProfileService;
@@ -140,6 +141,56 @@ describe('AccountProfileService', () => {
 
       expect(result).toBeDefined();
       expect(result.firstName).toBe('John');
+    });
+  });
+
+  describe('updateAccountProfile email', () => {
+    const createProfile = async (phoneNumber: string, email?: string) => {
+      const account = await prismaService.account.create({
+        data: { lastLoginAt: new Date() },
+      });
+      await prismaService.accountProfile.create({
+        data: { accountId: account.id, phoneNumber, email },
+      });
+      return account;
+    };
+
+    it('should store the email trimmed and lowercased, as the auth flows look it up', async () => {
+      const account = await createProfile('+15550001001');
+
+      await service.updateAccountProfile(account.id, {
+        email: 'Mixed.Case@Example.COM',
+      });
+
+      const stored = await prismaService.accountProfile.findFirstOrThrow({
+        where: { accountId: account.id },
+      });
+      expect(stored.email).toBe('mixed.case@example.com');
+    });
+
+    it('should reject an email another account already has, ignoring case', async () => {
+      await createProfile('+15550001002', 'taken.profile@example.com');
+      const other = await createProfile('+15550001003');
+
+      await expect(
+        service.updateAccountProfile(other.id, {
+          email: 'TAKEN.profile@example.com',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should leave the email alone when the update does not include it', async () => {
+      const account = await createProfile(
+        '+15550001004',
+        'keep.me@example.com',
+      );
+
+      await service.updateAccountProfile(account.id, { firstName: 'Kept' });
+
+      const stored = await prismaService.accountProfile.findFirstOrThrow({
+        where: { accountId: account.id },
+      });
+      expect(stored.email).toBe('keep.me@example.com');
     });
   });
 });

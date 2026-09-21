@@ -145,7 +145,8 @@ export class JwtAuthStrategyService extends JwtStrategyService {
       changePasswordInput.newPassword,
     );
     // One update: the new hash lands together with the revocation of every
-    // credential issued under the old password (sessions and a pending reset).
+    // credential issued under the old password (sessions, a pending reset and
+    // a pending OTP, as signOut does).
     await this.prismaService.accountIdentity.update({
       where: { accountId },
       data: {
@@ -154,6 +155,9 @@ export class JwtAuthStrategyService extends JwtStrategyService {
         refreshToken: null,
         resetTokenHash: null,
         resetTokenExpiresAt: null,
+        otpHash: null,
+        otpSalt: null,
+        otpExpiresAt: null,
       },
     });
   }
@@ -168,7 +172,12 @@ export class JwtAuthStrategyService extends JwtStrategyService {
       where: {
         email: normalizeEmail(restorePasswordInput.email),
         deleted: false,
-        Account: { deleted: false },
+        // A soft-deleted identity is never revived by a reset; an account with
+        // no identity row yet (OTP-only) is still allowed and gets one below.
+        Account: {
+          deleted: false,
+          NOT: { AccountIdentity: { is: { deleted: true } } },
+        },
       },
       select: { Account: true },
     });
@@ -231,6 +240,9 @@ export class JwtAuthStrategyService extends JwtStrategyService {
         refreshToken: null,
         resetTokenHash: null,
         resetTokenExpiresAt: null,
+        otpHash: null,
+        otpSalt: null,
+        otpExpiresAt: null,
       },
     });
     if (consumed.count !== 1) {

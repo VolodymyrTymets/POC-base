@@ -139,6 +139,21 @@ describe('Sign up with password (e2e)', () => {
     ).toEqual(0);
   });
 
+  it('Should reject a password with control characters', async () => {
+    // bcrypt hashes a NUL-only password like the empty string
+    const response = await signUp('control@example.com', '\0'.repeat(8));
+
+    const messages = validationMessages(response);
+    expect(messages).toEqual(
+      expect.arrayContaining([expect.stringMatching(/control characters/i)]),
+    );
+    expect(
+      await prismaService.accountProfile.count({
+        where: { email: 'control@example.com' },
+      }),
+    ).toEqual(0);
+  });
+
   afterEach(async () => {
     await app.close();
   });

@@ -7,10 +7,4 @@ export class RestorePasswordEntity {
       'Always true for a well-formed request, whether or not the email is registered',
   })
   success!: boolean;
-
-  @Field(() => String, {
-    nullable: true,
-    description: 'Reset token, only returned in local/development/test',
-  })
-  token?: string;
 }

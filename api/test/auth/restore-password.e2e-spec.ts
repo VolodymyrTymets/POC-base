@@ -14,7 +14,7 @@ import { INVALID_RESET_TOKEN } from '../../src/common/errors';
 
 type Tokens = { accessToken: string; refreshToken: string };
 type RestoreResponse = GraphQLResponseType<{
-  restorePassword: { success: boolean; token: string | null };
+  restorePassword: { success: boolean };
 }>;
 type ResetResponse = GraphQLResponseType<{ resetPassword: boolean }>;
 
@@ -52,10 +52,14 @@ describe('Restore password (e2e)', () => {
   const restore = (email: string) =>
     graphql<RestoreResponse>(
       `mutation($input: RestorePasswordInput!) {
-        restorePassword(restorePasswordInput: $input) { success token }
+        restorePassword(restorePasswordInput: $input) { success }
       }`,
       { input: { email } },
     );
+
+  // The API never returns the token (it goes out by email), so the tests read
+  // it from the call the notifier received, which is what the email worker gets.
+  const issuedToken = (): string => notifySpy.mock.calls.at(-1)?.[1] ?? '';
 
   const reset = (token: string, pass: string) =>
     graphql<ResetResponse>(
@@ -94,15 +98,15 @@ describe('Restore password (e2e)', () => {
     const restored = await restore(email);
 
     expect(restored.body.errors).toBeUndefined();
-    expect(restored.body.data.restorePassword.success).toEqual(true);
-    const token = restored.body.data.restorePassword.token;
-    expect(token).toBeTruthy();
+    expect(restored.body.data.restorePassword).toEqual({ success: true });
+    const token = issuedToken();
+    expect(token).toHaveLength(64);
     expect(notifySpy).toHaveBeenCalledTimes(1);
     expect(notifySpy).toHaveBeenCalledWith(expect.anything(), token, [
       NotifierTypes.EMAIL,
     ]);
 
-    const resetResponse = await reset(token ?? '', newPassword);
+    const resetResponse = await reset(token, newPassword);
 
     expect(resetResponse.body.errors).toBeUndefined();
     expect(resetResponse.body.data.resetPassword).toEqual(true);
@@ -119,18 +123,18 @@ describe('Restore password (e2e)', () => {
     const response = await restore('nobody.restore@example.com');
 
     expect(response.body.errors).toBeUndefined();
-    expect(response.body.data.restorePassword.success).toEqual(true);
-    expect(response.body.data.restorePassword.token).toBeNull();
+    expect(response.body.data.restorePassword).toEqual({ success: true });
     expect(notifySpy).not.toHaveBeenCalled();
   });
 
   it('Should reject a token that was already used', async () => {
     const email = 'restore.reuse@example.com';
     await signUp(email);
-    const token = (await restore(email)).body.data.restorePassword.token;
-    await reset(token ?? '', newPassword);
+    await restore(email);
+    const token = issuedToken();
+    await reset(token, newPassword);
 
-    const second = await reset(token ?? '', 'another password');
+    const second = await reset(token, 'another password');
 
     expect(second.body.errors?.[0].extensions.code).toEqual('UNAUTHENTICATED');
     expect(second.body.errors?.[0].message).toEqual(INVALID_RESET_TOKEN);
@@ -139,13 +143,14 @@ describe('Restore password (e2e)', () => {
   it('Should reject an expired token and keep the current password', async () => {
     const email = 'restore.expired@example.com';
     await signUp(email);
-    const token = (await restore(email)).body.data.restorePassword.token;
+    await restore(email);
+    const token = issuedToken();
     await prismaService.accountIdentity.updateMany({
       where: { Account: { AccountProfile: { email } } },
       data: { resetTokenExpiresAt: new Date(Date.now() - 1000) },
     });
 
-    const response = await reset(token ?? '', newPassword);
+    const response = await reset(token, newPassword);
 
     expect(response.body.errors?.[0].message).toEqual(INVALID_RESET_TOKEN);
     const login = await signIn(email, password);
@@ -155,11 +160,13 @@ describe('Restore password (e2e)', () => {
   it('Should invalidate the first token when a second one is requested', async () => {
     const email = 'restore.twice@example.com';
     await signUp(email);
-    const first = (await restore(email)).body.data.restorePassword.token;
-    const second = (await restore(email)).body.data.restorePassword.token;
+    await restore(email);
+    const first = issuedToken();
+    await restore(email);
+    const second = issuedToken();
 
-    const withFirst = await reset(first ?? '', newPassword);
-    const withSecond = await reset(second ?? '', newPassword);
+    const withFirst = await reset(first, newPassword);
+    const withSecond = await reset(second, newPassword);
 
     expect(withFirst.body.errors?.[0].message).toEqual(INVALID_RESET_TOKEN);
     expect(withSecond.body.errors).toBeUndefined();
