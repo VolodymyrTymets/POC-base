@@ -5,6 +5,8 @@ import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { SmsSenderModule } from './sms-sender/sms-sender.module';
 import { QUEUE_NAME as SMS_QUEUE_NAME } from './sms-sender/sms.que.contants';
+import { EmailSenderModule } from './email-sender/email-sender.module';
+import { QUEUE_NAME as EMAIL_QUEUE_NAME } from './email-sender/email.queue.constants';
 
 @Module({
   imports: [
@@ -23,7 +25,11 @@ import { QUEUE_NAME as SMS_QUEUE_NAME } from './sms-sender/sms.que.contants';
     BullModule.registerQueue({
       name: SMS_QUEUE_NAME,
     }),
+    BullModule.registerQueue({
+      name: EMAIL_QUEUE_NAME,
+    }),
     SmsSenderModule,
+    EmailSenderModule,
   ],
   providers: [
     {

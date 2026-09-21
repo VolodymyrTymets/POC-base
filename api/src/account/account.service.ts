@@ -42,6 +42,23 @@ export class AccountService extends PrismaCashingService {
     });
   }
 
+  // One nested create so the account, its profile, identity and CUSTOMER role
+  // link land atomically; AccountRoleService cannot join a transaction.
+  async createPasswordAccount(email: string, hash: string, salt: string) {
+    const role = await this.prismaService.accountRole.findUniqueOrThrow({
+      where: { type: AccountRoleType.CUSTOMER },
+    });
+
+    return this.prismaService.account.create({
+      data: {
+        lastLoginAt: new Date(),
+        AccountProfile: { create: { email } },
+        AccountIdentity: { create: { hash, salt } },
+        AccountOnRole: { create: { roleId: role.id } },
+      },
+    });
+  }
+
   async createCustomerAccount(phoneNumber: string) {
     const account = await this.prismaService.account.create({
       data: {

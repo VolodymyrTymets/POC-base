@@ -30,4 +30,7 @@ export class SmsNotifierService implements NotifierServiceInterface {
       code,
     });
   }
+
+  // Password-reset links go out by email; nothing to do on the SMS channel.
+  async notifyAboutPasswordReset() {}
 }

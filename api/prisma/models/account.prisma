@@ -52,6 +52,9 @@ model AccountIdentity {
   otpHash      String?
   otpSalt      String?
   otpExpiresAt DateTime?
+  // sha256 of the password-reset token; the token itself is never stored (KAN-12)
+  resetTokenHash      String?   @unique
+  resetTokenExpiresAt DateTime?
   refreshToken String?
   deleted      Boolean   @default(false)
 
@@ -62,7 +65,8 @@ model AccountProfile {
   id              String  @id @default(uuid(4))
   accountId       String  @unique
   Account         Account @relation(fields: [accountId], references: [id])
-  email           String?
+  // login identifier for password accounts; stored trimmed + lowercased (KAN-12)
+  email           String? @unique
   phoneNumber     String?
   isPhoneVerified Boolean @default(false)
   firstName       String?

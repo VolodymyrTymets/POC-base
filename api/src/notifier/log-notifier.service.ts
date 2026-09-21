@@ -9,4 +9,7 @@ export class LogNotifierService implements NotifierServiceInterface {
       Logger.debug(`  TOTPCode: `, code);
     }
   }
+
+  // The email worker already logs reset messages; nothing to add here.
+  async notifyAboutPasswordReset() {}
 }

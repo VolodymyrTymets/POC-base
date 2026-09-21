@@ -1,6 +1,12 @@
 import { Mutation, Args, Resolver } from '@nestjs/graphql';
 import { SignInInput } from './dto/sign-in.input';
 import { VerifyOtpInput } from './dto/verify-otp.input';
+import { SignUpInput } from './dto/sign-up.input';
+import { PasswordSignInInput } from './dto/password-sign-in.input';
+import { ChangePasswordInput } from './dto/change-password.input';
+import { RestorePasswordInput } from './dto/restore-password.input';
+import { ResetPasswordInput } from './dto/reset-password.input';
+import { RestorePasswordEntity } from './entities/restore-password.entity';
 import { AuthTokensEntity } from './entities/auth-tokens.entity';
 import { OtpAuthStrategyService } from './services/otp-auth-strategy/otp-auth-strategy.service';
 import { JwtAuthStrategyService } from './services/jwt-auth-strategy/jwt-auth-strategy.service';
@@ -49,6 +55,24 @@ export class AuthResolver {
   }
 
   @Mutation(() => AuthTokensEntity, {
+    description: 'Register a customer account with an email and password',
+  })
+  signUp(
+    @Args('signUpInput') signUpInput: SignUpInput,
+  ): Promise<AuthTokensEntity> {
+    return this.jwtAuthStrategyService.signUp(signUpInput);
+  }
+
+  @Mutation(() => AuthTokensEntity, {
+    description: 'Sign in with the email and password of a registered account',
+  })
+  signIn(
+    @Args('signInInput') signInInput: PasswordSignInInput,
+  ): Promise<AuthTokensEntity> {
+    return this.jwtAuthStrategyService.signIn(signInInput);
+  }
+
+  @Mutation(() => AuthTokensEntity, {
     description: 'Refresh access token using a valid refresh token.',
   })
   @UseGuards(JwtRefreshAuthGuard)
@@ -56,6 +80,44 @@ export class AuthResolver {
     @CurrentAccount() currentAccount: AuthAccount,
   ): Promise<AuthTokensEntity> {
     return this.jwtAuthStrategyService.refreshToken(currentAccount.accountId);
+  }
+
+  @Mutation(() => RestorePasswordEntity, {
+    description:
+      'Email a password reset token; the answer is the same for unknown emails and never contains the token',
+  })
+  async restorePassword(
+    @Args('restorePasswordInput') restorePasswordInput: RestorePasswordInput,
+  ): Promise<RestorePasswordEntity> {
+    await this.jwtAuthStrategyService.restorePassword(restorePasswordInput);
+    return { success: true };
+  }
+
+  @Mutation(() => Boolean, {
+    description:
+      'Set a new password with a reset token; every session must sign in again afterwards',
+  })
+  async resetPassword(
+    @Args('resetPasswordInput') resetPasswordInput: ResetPasswordInput,
+  ) {
+    await this.jwtAuthStrategyService.resetPassword(resetPasswordInput);
+    return true;
+  }
+
+  @UseGuards(GqlAuthGuard)
+  @Mutation(() => Boolean, {
+    description:
+      'Change the password of the signed-in account; every session must sign in again afterwards',
+  })
+  async changePassword(
+    @CurrentAccount() currentAccount: AuthAccount,
+    @Args('changePasswordInput') changePasswordInput: ChangePasswordInput,
+  ) {
+    await this.jwtAuthStrategyService.changePassword(
+      currentAccount.accountId,
+      changePasswordInput,
+    );
+    return true;
   }
 
   @UseGuards(GqlAuthGuard)
