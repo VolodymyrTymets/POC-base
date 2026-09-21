@@ -25,11 +25,17 @@ const validationReasons = (
   return null;
 };
 
-export const getAuthErrorMessage = (error: unknown): string => {
+// `overrides` lets a page reword a known code for its own context, e.g. the
+// change-password form says "current password", not "email or password".
+export const getAuthErrorMessage = (
+  error: unknown,
+  overrides: Readonly<Record<string, string>> = {},
+): string => {
   if (CombinedGraphQLErrors.is(error)) {
     const [first] = error.errors;
     if (first) {
       return (
+        overrides[first.message] ??
         KNOWN_MESSAGES[first.message] ??
         validationReasons(first.extensions) ??
         GENERIC_MESSAGE

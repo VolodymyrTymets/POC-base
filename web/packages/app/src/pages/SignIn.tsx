@@ -3,7 +3,14 @@ import { Link, Navigate } from 'react-router';
 import { getAuthErrorMessage } from '@web/shared/api/auth/error-message';
 import { SignInMutation } from '@web/shared/api/auth/mutations';
 import { useMutation } from '@web/shared/api/react';
-import { Field, FormCard, FormError, submitButtonClass } from '../components/form';
+import {
+  Field,
+  FormCard,
+  FormError,
+  FormSuccess,
+  submitButtonClass,
+} from '../components/form';
+import { takeSignInNotice } from '../notice';
 import { useSession } from '../session/SessionProvider';
 import { validateEmail } from '../validation';
 
@@ -13,6 +20,7 @@ export function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice] = useState(takeSignInNotice);
 
   if (isSignedIn) {
     return <Navigate to="/account" replace />;
@@ -43,6 +51,7 @@ export function SignIn() {
   return (
     <FormCard title="Sign in">
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+        <FormSuccess message={notice} />
         <FormError message={error} />
         <Field
           label="Email"

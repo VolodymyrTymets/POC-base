@@ -1,5 +1,8 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router';
 import { Header } from './components/Header';
+import { Account } from './pages/Account';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { RestorePassword } from './pages/RestorePassword';
 import { SignIn } from './pages/SignIn';
 import { SignUp } from './pages/SignUp';
 import { RequireAuth } from './session/RequireAuth';
@@ -22,8 +25,10 @@ export function App() {
         <Route path="/" element={<Navigate to="/account" replace />} />
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/sign-up" element={<SignUp />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/restore-password" element={<RestorePassword />} />
         <Route element={<RequireAuth />}>
-          <Route path="/account" element={<h1>Account</h1>} />
+          <Route path="/account" element={<Account />} />
         </Route>
       </Route>
     </Routes>
