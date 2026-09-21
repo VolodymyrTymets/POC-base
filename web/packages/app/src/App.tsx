@@ -1,25 +1,14 @@
-import { Routes, Route, Link } from 'react-router';
+import { Navigate, Outlet, Route, Routes } from 'react-router';
+import { Header } from './components/Header';
+import { RequireAuth } from './session/RequireAuth';
 
-function Home() {
+function Layout() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <h1 className="text-brand text-3xl font-bold">poc-base app</h1>
-      <p className="text-slate-500">Placeholder home route.</p>
-      <Link to="/about" className="text-blue-600 underline">
-        About
-      </Link>
-    </div>
-  );
-}
-
-function About() {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-      <h1 className="text-3xl font-bold">About</h1>
-      <p className="text-slate-500">Placeholder about route.</p>
-      <Link to="/" className="text-blue-600 underline">
-        Home
-      </Link>
+    <div className="min-h-screen">
+      <Header />
+      <main className="mx-auto max-w-md px-6 py-10">
+        <Outlet />
+      </main>
     </div>
   );
 }
@@ -27,8 +16,12 @@ function About() {
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/about" element={<About />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<Navigate to="/account" replace />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/account" element={<h1>Account</h1>} />
+        </Route>
+      </Route>
     </Routes>
   );
 }
