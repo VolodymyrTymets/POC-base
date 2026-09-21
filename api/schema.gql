@@ -59,6 +59,16 @@ type FileEntity {
   publicUrl: String
 }
 
+type RestorePasswordEntity {
+  """
+  Always true for a well-formed request, whether or not the email is registered
+  """
+  success: Boolean!
+
+  """Reset token, only returned in local/development/test"""
+  token: String
+}
+
 type AuthTokensEntity {
   """JWT access token (15 min)"""
   accessToken: String!
@@ -103,6 +113,16 @@ type Mutation {
 
   """Refresh access token using a valid refresh token."""
   refreshToken: AuthTokensEntity!
+
+  """
+  Email a password reset token; the answer is the same for unknown emails
+  """
+  restorePassword(restorePasswordInput: RestorePasswordInput!): RestorePasswordEntity!
+
+  """
+  Set a new password with a reset token; every session must sign in again afterwards
+  """
+  resetPassword(resetPasswordInput: ResetPasswordInput!): Boolean!
 
   """
   Change the password of the signed-in account; every session must sign in again afterwards
@@ -187,6 +207,19 @@ input PasswordSignInInput {
 
   """password"""
   password: String!
+}
+
+input RestorePasswordInput {
+  """email of the account to recover"""
+  email: String!
+}
+
+input ResetPasswordInput {
+  """token from the password reset email"""
+  token: String!
+
+  """the new password, 8 to 72 bytes"""
+  newPassword: String!
 }
 
 input ChangePasswordInput {

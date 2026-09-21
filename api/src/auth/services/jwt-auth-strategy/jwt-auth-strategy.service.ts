@@ -4,7 +4,7 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { compare, genSalt, hash as bcryptHash, hashSync } from 'bcrypt';
 import { JwtStrategyService } from '../jwt-strategy/jwt-strategy.service';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -15,10 +15,15 @@ import { AccountService } from '../../../account/account.service';
 import { SignUpInput } from '../../dto/sign-up.input';
 import { PasswordSignInInput } from '../../dto/password-sign-in.input';
 import { ChangePasswordInput } from '../../dto/change-password.input';
+import { RestorePasswordInput } from '../../dto/restore-password.input';
+import { ResetPasswordInput } from '../../dto/reset-password.input';
+import { NotifierService } from '../../../notifier/notifier.service';
+import { NotifierTypes } from '../../../notifier/notifier.service.interface';
 import { AuthTokensEntity } from '../../entities/auth-tokens.entity';
 import {
   EMAIL_ALREADY_REGISTERED,
   INVALID_CREDENTIALS,
+  INVALID_RESET_TOKEN,
 } from '../../../common/errors';
 import { normalizeEmail } from '../../../common/normalize-email';
 
@@ -31,8 +36,17 @@ export class JwtAuthStrategyService extends JwtStrategyService {
     protected readonly jwtService: JwtService,
     protected readonly configService: ConfigService,
     private readonly accountService: AccountService,
+    private readonly notifierService: NotifierService,
   ) {
     super(prismaService, jwtService, configService);
+  }
+
+  private readonly RESET_TOKEN_TTL_MINUTES = 30;
+
+  // The reset token is 256 random bits, so a fast hash is enough to keep it
+  // unusable from a database dump; bcrypt's cost would only slow the lookup.
+  private hashResetToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
   }
 
   // Compared against when no real hash exists, so an unknown email costs the
@@ -142,6 +156,86 @@ export class JwtAuthStrategyService extends JwtStrategyService {
         resetTokenExpiresAt: null,
       },
     });
+  }
+
+  // Returns the token when one was issued, null for an unknown email. The
+  // caller must answer both the same way so the endpoint cannot be used to
+  // find out which emails are registered.
+  async restorePassword(
+    restorePasswordInput: RestorePasswordInput,
+  ): Promise<string | null> {
+    const profile = await this.prismaService.accountProfile.findFirst({
+      where: {
+        email: normalizeEmail(restorePasswordInput.email),
+        deleted: false,
+        Account: { deleted: false },
+      },
+      select: { Account: true },
+    });
+    if (!profile) {
+      return null;
+    }
+
+    const token = randomBytes(32).toString('hex');
+    const resetTokenHash = this.hashResetToken(token);
+    const resetTokenExpiresAt = new Date(
+      Date.now() + this.RESET_TOKEN_TTL_MINUTES * 60 * 1000,
+    );
+    // Overwriting replaces any token still live, and an OTP-only account has
+    // no identity row yet, so this is an upsert.
+    await this.prismaService.accountIdentity.upsert({
+      where: { accountId: profile.Account.id },
+      create: {
+        accountId: profile.Account.id,
+        resetTokenHash,
+        resetTokenExpiresAt,
+      },
+      update: { resetTokenHash, resetTokenExpiresAt },
+    });
+
+    await this.notifierService.notifyAboutPasswordReset(
+      profile.Account,
+      token,
+      [NotifierTypes.EMAIL],
+    );
+    return token;
+  }
+
+  async resetPassword(resetPasswordInput: ResetPasswordInput): Promise<void> {
+    const resetTokenHash = this.hashResetToken(resetPasswordInput.token);
+    const identity = await this.prismaService.accountIdentity.findFirst({
+      where: {
+        resetTokenHash,
+        deleted: false,
+        Account: { deleted: false },
+      },
+    });
+    // Unknown, already used and expired tokens are indistinguishable on purpose.
+    if (
+      !identity?.resetTokenExpiresAt ||
+      identity.resetTokenExpiresAt < new Date()
+    ) {
+      throw new UnauthorizedException(INVALID_RESET_TOKEN);
+    }
+
+    const { hash, salt } = await this.hashPassword(
+      resetPasswordInput.newPassword,
+    );
+    // Conditional on the token still being there: of two concurrent resets
+    // with the same token, only the one that clears it changes the password.
+    const consumed = await this.prismaService.accountIdentity.updateMany({
+      where: { id: identity.id, resetTokenHash },
+      data: {
+        hash,
+        salt,
+        refreshToken: null,
+        resetTokenHash: null,
+        resetTokenExpiresAt: null,
+      },
+    });
+    if (consumed.count !== 1) {
+      throw new UnauthorizedException(INVALID_RESET_TOKEN);
+    }
   }
 
   async validateRefreshToken(accountId: string, refreshToken: string) {

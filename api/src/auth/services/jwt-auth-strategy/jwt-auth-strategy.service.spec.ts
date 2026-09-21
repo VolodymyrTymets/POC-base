@@ -15,12 +15,20 @@ import { GqlAuthGuard } from '../../guards/gql-auth.guard';
 import { AccountRoleModule } from '../../../account-role/account-role.module';
 import { AccountService } from '../../../account/account.service';
 import { AccountRoleType } from '../../../../generated/prisma/enums';
-import { INVALID_CREDENTIALS } from '../../../common/errors';
+import {
+  INVALID_CREDENTIALS,
+  INVALID_RESET_TOKEN,
+} from '../../../common/errors';
+import { NotifierService } from '../../../notifier/notifier.service';
+import { NotifierTypes } from '../../../notifier/notifier.service.interface';
+import { createHash } from 'crypto';
 
 describe('JwtAuthStrategyService', () => {
   let jwtAuthStrategyService: JwtAuthStrategyService;
   let prismaService: PrismaService;
   let accountService: AccountService;
+  // NotifierService is the boundary to the queue, so it is the mocked edge here
+  const notifierService = { notifyAboutPasswordReset: jest.fn() };
   const dataCooker = new DataCooker();
 
   beforeAll(async () => {
@@ -29,6 +37,7 @@ describe('JwtAuthStrategyService', () => {
 
   beforeEach(async () => {
     await dataCooker.beforeEach();
+    notifierService.notifyAboutPasswordReset.mockReset();
     const app: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -46,6 +55,7 @@ describe('JwtAuthStrategyService', () => {
       providers: [
         JwtAuthStrategyService,
         AccountService,
+        { provide: NotifierService, useValue: notifierService },
         JwtStrategy,
         GqlAuthGuard,
       ],
@@ -359,6 +369,222 @@ describe('JwtAuthStrategyService', () => {
           newPassword: 'battery staple',
         }),
       ).rejects.toThrow(INVALID_CREDENTIALS);
+    });
+  });
+
+  describe('restorePassword and resetPassword', () => {
+    const password = 'correct horse';
+    let email: string;
+    let accountId: string;
+    let emailCounter = 0;
+
+    const identityOf = (id: string) =>
+      prismaService.accountIdentity.findFirstOrThrow({
+        where: { accountId: id },
+      });
+
+    beforeEach(async () => {
+      email = `restore.user.${++emailCounter}@example.com`;
+      await jwtAuthStrategyService.signUp({ email, password });
+      const profile = await prismaService.accountProfile.findFirstOrThrow({
+        where: { email },
+      });
+      accountId = profile.accountId;
+    });
+
+    describe('restorePassword', () => {
+      it('should store only a sha256 hash of the token, with a 30 minute expiry', async () => {
+        const token = await jwtAuthStrategyService.restorePassword({ email });
+
+        const identity = await identityOf(accountId);
+        expect(token).not.toBeNull();
+        expect(identity.resetTokenHash).toBe(
+          createHash('sha256')
+            .update(token ?? '')
+            .digest('hex'),
+        );
+        expect(identity.resetTokenHash).not.toBe(token);
+        const minutesLeft =
+          ((identity.resetTokenExpiresAt?.getTime() ?? 0) - Date.now()) / 60000;
+        expect(minutesLeft).toBeGreaterThan(29);
+        expect(minutesLeft).toBeLessThanOrEqual(30);
+      });
+
+      it('should ask the notifier to send the token by email', async () => {
+        const token = await jwtAuthStrategyService.restorePassword({ email });
+
+        expect(notifierService.notifyAboutPasswordReset).toHaveBeenCalledTimes(
+          1,
+        );
+        expect(notifierService.notifyAboutPasswordReset).toHaveBeenCalledWith(
+          expect.objectContaining({ id: accountId }),
+          token,
+          [NotifierTypes.EMAIL],
+        );
+      });
+
+      it('should return null and touch nothing for an unknown email', async () => {
+        const identitiesBefore = await prismaService.accountIdentity.count({
+          where: { resetTokenHash: { not: null } },
+        });
+
+        const token = await jwtAuthStrategyService.restorePassword({
+          email: 'nobody@example.com',
+        });
+
+        expect(token).toBeNull();
+        expect(notifierService.notifyAboutPasswordReset).not.toHaveBeenCalled();
+        expect(
+          await prismaService.accountIdentity.count({
+            where: { resetTokenHash: { not: null } },
+          }),
+        ).toBe(identitiesBefore);
+      });
+
+      it('should replace a token that is still live', async () => {
+        const first = await jwtAuthStrategyService.restorePassword({ email });
+        const second = await jwtAuthStrategyService.restorePassword({ email });
+
+        expect(second).not.toBe(first);
+        await expect(
+          jwtAuthStrategyService.resetPassword({
+            token: first ?? '',
+            newPassword: 'battery staple',
+          }),
+        ).rejects.toThrow(INVALID_RESET_TOKEN);
+        await expect(
+          jwtAuthStrategyService.resetPassword({
+            token: second ?? '',
+            newPassword: 'battery staple',
+          }),
+        ).resolves.toBeUndefined();
+      });
+
+      it('should create the identity of an OTP-only account that has an email', async () => {
+        const otpAccount = await prismaService.account.create({
+          data: {
+            lastLoginAt: new Date(),
+            AccountProfile: {
+              create: { phoneNumber: '+7770001112', email: `otp.${email}` },
+            },
+          },
+        });
+
+        const token = await jwtAuthStrategyService.restorePassword({
+          email: `otp.${email}`,
+        });
+
+        expect(token).not.toBeNull();
+        expect((await identityOf(otpAccount.id)).resetTokenHash).not.toBeNull();
+      });
+    });
+
+    describe('resetPassword', () => {
+      it('should set the new password, consume the token and clear the refresh token', async () => {
+        await jwtAuthStrategyService.signIn({ email, password });
+        const token = await jwtAuthStrategyService.restorePassword({ email });
+
+        await jwtAuthStrategyService.resetPassword({
+          token: token ?? '',
+          newPassword: 'battery staple',
+        });
+
+        const identity = await identityOf(accountId);
+        expect(identity.resetTokenHash).toBeNull();
+        expect(identity.resetTokenExpiresAt).toBeNull();
+        expect(identity.refreshToken).toBeNull();
+        await expect(
+          jwtAuthStrategyService.signIn({ email, password }),
+        ).rejects.toThrow(UnauthorizedException);
+        const tokens = await jwtAuthStrategyService.signIn({
+          email,
+          password: 'battery staple',
+        });
+        expect(tokens.accessToken.length).toBeGreaterThan(0);
+      });
+
+      it('should reject a token that was already used', async () => {
+        const token = await jwtAuthStrategyService.restorePassword({ email });
+        await jwtAuthStrategyService.resetPassword({
+          token: token ?? '',
+          newPassword: 'battery staple',
+        });
+
+        await expect(
+          jwtAuthStrategyService.resetPassword({
+            token: token ?? '',
+            newPassword: 'another one',
+          }),
+        ).rejects.toThrow(INVALID_RESET_TOKEN);
+      });
+
+      it('should reject an expired token and keep the password', async () => {
+        const token = await jwtAuthStrategyService.restorePassword({ email });
+        await prismaService.accountIdentity.update({
+          where: { accountId },
+          data: { resetTokenExpiresAt: new Date(Date.now() - 1000) },
+        });
+
+        await expect(
+          jwtAuthStrategyService.resetPassword({
+            token: token ?? '',
+            newPassword: 'battery staple',
+          }),
+        ).rejects.toThrow(INVALID_RESET_TOKEN);
+        const tokens = await jwtAuthStrategyService.signIn({ email, password });
+        expect(tokens.accessToken.length).toBeGreaterThan(0);
+      });
+
+      it('should reject an unknown token with the same error as a used one', async () => {
+        await expect(
+          jwtAuthStrategyService.resetPassword({
+            token: 'not-a-real-token',
+            newPassword: 'battery staple',
+          }),
+        ).rejects.toThrow(INVALID_RESET_TOKEN);
+      });
+
+      it('should let only one of two concurrent resets with the same token win', async () => {
+        const token = await jwtAuthStrategyService.restorePassword({ email });
+
+        const results = await Promise.allSettled([
+          jwtAuthStrategyService.resetPassword({
+            token: token ?? '',
+            newPassword: 'first winner',
+          }),
+          jwtAuthStrategyService.resetPassword({
+            token: token ?? '',
+            newPassword: 'second winner',
+          }),
+        ]);
+
+        expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+        expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
+      });
+
+      it('should give an OTP-only account its first password', async () => {
+        const otpEmail = `first.password.${email}`;
+        await prismaService.account.create({
+          data: {
+            lastLoginAt: new Date(),
+            AccountProfile: { create: { email: otpEmail } },
+          },
+        });
+        const token = await jwtAuthStrategyService.restorePassword({
+          email: otpEmail,
+        });
+
+        await jwtAuthStrategyService.resetPassword({
+          token: token ?? '',
+          newPassword: 'battery staple',
+        });
+
+        const tokens = await jwtAuthStrategyService.signIn({
+          email: otpEmail,
+          password: 'battery staple',
+        });
+        expect(tokens.accessToken.length).toBeGreaterThan(0);
+      });
     });
   });
 
