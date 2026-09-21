@@ -60,7 +60,7 @@ future POC can repoint it at a live URL if it wants to.
 - Accepted cost: a developer following the ticket's implementation-details section literally will find
   the actual dependency (`client-preset`) and output path differ from what's written there — this ADR
   and `docs/features/KAN-5/spec.md`'s Open Questions are the record of why.
-- **Apollo Client is installed (`web/shared/package.json`) but not yet wired into either app** — no
+- *(Superseded by KAN-13, ADR-0012: the client is now wired into `app`.)* **Apollo Client is installed (`web/shared/package.json`) but not yet wired into either app** — no
   `ApolloClient`/`ApolloProvider` instance exists yet, and `VITE_GRAPHQL_URL` is not read by any code.
   This is deliberate: the confirmed scope for KAN-5 is a pure structural scaffold (no real query wired
   into a component — see spec.md's Open Questions #1), so the dependency and env var are staged for the

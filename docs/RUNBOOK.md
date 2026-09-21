@@ -30,6 +30,10 @@ Or via Docker for the whole stack: `docker compose up -d --build` (runs `docker-
 # codegen reads this file directly, it does not need api's dev server, DB or Docker running)
 pnpm --dir web install
 
+# env: the apps throw at start-up without VITE_GRAPHQL_URL, and .env.development is gitignored
+cp web/packages/app/.env.development.example web/packages/app/.env.development
+cp web/packages/admin/.env.development.example web/packages/admin/.env.development
+
 # generate typed GraphQL output from api/schema.gql
 pnpm --dir web run codegen
 
@@ -43,6 +47,17 @@ pnpm --dir web/packages/admin run build
 ```
 No env file is required for `codegen` on a fresh clone — it defaults to `../api/schema.gql` when
 `GRAPHQL_SCHEMA_PATH` isn't set (see `web/codegen.ts`, ADR-0008).
+
+## Web auth pages (KAN-13)
+- The API allows browser calls from `CORS_ORIGINS` (comma-separated, default `http://localhost:5173,http://localhost:5174`).
+  It is in both API env templates (`api/.env.example`, `api/.env.develoment.example`). If `set-ports.sh`
+  moved the web ports, set `CORS_ORIGINS` to the new origins in the API's env.
+- `web/packages/app` needs `VITE_GRAPHQL_URL` (copy `.env.development.example`, see "First run — web/") and
+  throws at start-up without it. `.env.development` is only read in Vite's dev mode, so a production build has
+  no source for it yet — a fork that deploys must supply it at build time.
+- There is no email provider (ADR-0011): to finish "Forgot password", run the worker
+  (`pnpm --dir api run worker:start:dev`), submit the email on `/auth/forgot-password`, read the token from the
+  worker's `[EMAIL] Password reset ...` log line and open `/auth/restore-password?token=<token>`.
 
 ## Running two (or more) stacks side by side
 Every service's *host-side* port is configurable (ADR-0009) — container-internal ports never change

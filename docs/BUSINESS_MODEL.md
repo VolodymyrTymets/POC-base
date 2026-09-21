@@ -23,7 +23,7 @@ base — the pieces a new POC would otherwise have to rebuild from scratch.
 
 ## Explicitly out of scope (this phase)
 - A specific client-facing product or business domain — none exists yet; the domain objects (`Account`, `Notification`, `File`, etc.) are deliberately generic.
-- A `web/` frontend — planned per the root `README.md`, not started.
+- Web screens beyond the auth pages (`web/` exists since KAN-5; KAN-13 added sign in/up, password restore and account for `app`).
 - CI/CD, staging and production environments — not defined in this repo yet.
 
 ## Judgement examples
