@@ -23,22 +23,25 @@ new mutation ships with an e2e spec that a fork can copy.
   OTP flow's behaviour.
 
 ## Acceptance criteria
-- [ ] AC1 Given a new email and valid password, when `signUp` runs, then a `CUSTOMER` `Account` +
+- [x] AC1 Given a new email and valid password, when `signUp` runs, then a `CUSTOMER` `Account` +
       `AccountProfile` + `AccountIdentity` (bcrypt `hash`) exist and `AuthTokensEntity` is returned.
-- [ ] AC2 Given an email already registered (case-insensitive), when `signUp` runs, then it is rejected.
-- [ ] AC3 Given correct credentials, when `signIn` runs, then tokens are returned; wrong password and
+- [x] AC2 Given an email already registered (case-insensitive), when `signUp` runs, then it is rejected.
+- [x] AC3 Given correct credentials, when `signIn` runs, then tokens are returned; wrong password and
       unknown email return the same `UNAUTHENTICATED` error.
-- [ ] AC4 Given a valid access token, when `changePassword` runs with the correct current password, then
+- [x] AC4 Given a valid access token, when `changePassword` runs with the correct current password, then
       the hash changes, the old password stops working, and the stored refresh token is revoked.
-- [ ] AC5 `changePassword` with a wrong current password, or without a token, is rejected.
-- [ ] AC6 Given a registered email, when `restorePassword` runs, then a hashed single-use token with an
+- [x] AC5 `changePassword` with a wrong current password, or without a token, is rejected.
+- [x] AC6 Given a registered email, when `restorePassword` runs, then a hashed single-use token with an
       expiry is stored and an email notification is queued. An unknown email returns the same success
       response and stores/queues nothing.
-- [ ] AC7 Given a valid token, when `resetPassword` runs, then the password changes, the token is
+- [x] AC7 Given a valid token, when `resetPassword` runs, then the password changes, the token is
       consumed and the refresh token is revoked; an expired, used or unknown token is rejected.
-- [ ] AC8 The reset token is logged only by the log-only email worker and only in local/development/test
+- [x] AC8 The reset token is logged only by the log-only email worker and only in local/development/test
       (POC decision, no real provider); the OTP e2e suite still passes unchanged.
-- [ ] AC9 `sign-up`, `sign-in`, `change-password`, `restore-password` e2e specs exist and pass.
+- [x] AC9 `sign-up`, `sign-in`, `change-password`, `restore-password` e2e specs exist and pass.
+
+AC4 and AC7 hold as written (the stored refresh token is cleared), but older refresh tokens work again
+after the next sign-in — see open question 6.
 
 ## Edge cases
 | Case | Expected behaviour | Decided by |

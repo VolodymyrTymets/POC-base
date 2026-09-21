@@ -16,6 +16,9 @@ base — the pieces a new POC would otherwise have to rebuild from scratch.
 
 ## Non-negotiables (never trade these for speed)
 - Real SMS/email sending must actually be used for those integrations, not mocked/stubbed out, even under time pressure — this base is meant to prove the real integration path works, not a facade over it. (Tests are the exception: they intentionally mock these at the network boundary, per `.claude/rules/testing-js.md`.)
+- **(Relaxed for the POC stage 2026-09-21, KAN-12, decided by volodymyr)** The bullet above is not enforced
+  yet: email and SMS workers only log, and no real provider is wired. See ADR-0011 for the exact behaviour;
+  wiring a real provider needs its own ticket and an approved dependency.
 - **(Superseded 2026-09-18, KAN-6)** The S3-bucket non-negotiable above is dropped, not narrowed: file storage moved from S3 to PostgreSQL (see the ADR KAN-6 adds under `docs/decisions/`). A POC forked from this base after KAN-6 no longer proves an S3 integration path — if a future client engagement needs real object storage, that is a decision for that fork, not an assumption this base still makes.
 
 ## Explicitly out of scope (this phase)

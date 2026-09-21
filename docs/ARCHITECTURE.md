@@ -63,10 +63,20 @@ stored bytes as a `data:<mimeType>;base64,<content>` URI (selected from Prisma o
 selection set actually requests it, including through fragments) — there is no external storage call in
 this flow.
 
+### 4. Password sign-in and restore (ADR-0011)
+`signUp` / `signIn` / `changePassword` (`auth.resolver.ts` → `JwtAuthStrategyService`) verify or store a
+bcrypt hash in `AccountIdentity.hash`, then issue the same access + refresh JWTs as flow 1
+(`isPhoneVerified` stays untouched — only `verifyOtp` sets it). `restorePassword` stores a sha256 hash of a
+random token (`AccountIdentity.resetTokenHash`, 30 min) and calls `NotifierService.notifyAboutPasswordReset`
+→ `EmailNotifierService` → BullMQ `EMAIL_QUEUE` → `email-sender` worker, which only logs at POC stage;
+`resetPassword` consumes the token with one conditional update and clears the stored refresh token. An
+unknown email gets the same response as a known one.
+
 ## External integrations
 | Service | Purpose | Failure mode | Sandbox available? |
 |---------|---------|--------------|--------------------|
 | SMS provider (via `SmsNotifierService`) | OTP delivery | sign-in blocked | mocked in tests (`test/utils/mock-services`); no real sandbox wired yet |
+| Email (via `EmailNotifierService`, `email-sender` worker) | password-reset messages | reset flow unusable outside local/development/test — the worker only logs, no provider is wired (ADR-0011) | none — POC stage |
 | Sentry | error tracking (`@sentry/nestjs`) | silent — errors just aren't reported | disabled locally (`enabled: NODE_ENV !== 'local'` in `api/src/instrument.ts`) |
 
 ## Known constraints and landmines

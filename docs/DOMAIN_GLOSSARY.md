@@ -11,11 +11,13 @@ names for something they don't mean.
 |------------------------|-----------------|---------------|-------------------------|
 | Account | `Account` (Prisma model), `AccountEntity` | The authenticatable identity — id, login timestamps, soft-delete flag. Holds no personal data itself. | `AccountProfile`, which holds the actual person's details |
 | Profile | `AccountProfile` | The personal details attached 1:1 to an `Account`: name, phone, email, DOB, SSN, avatar. | `Account` |
-| Identity / credentials | `AccountIdentity` | Password/OTP hash material and the refresh token for an `Account`. Never exposed through GraphQL. | `AccountProfile` |
+| Identity / credentials | `AccountIdentity` | Password/OTP hash material, the password-reset token hash and the refresh token for an `Account`. Never exposed through GraphQL. | `AccountProfile` |
 | Role | `AccountRole` (`CUSTOMER`, `ADMIN`), `AccountOnRole` | A named permission bucket an `Account` can be placed in, many-to-many via `AccountOnRole`. | — |
 | File | `File`, `FileEntity` | A tracked upload: content bytes (`content`, Postgres `bytea`, ADR-0010), mime type, size. Presence of `content` (and therefore of `publicUrl`) *is* the upload state — there is no separate lifecycle field as of KAN-6 (see ADR-0010's amendment). | — bytes live in the database itself as of KAN-6, not an external object store |
 | Notification | `Notification`, `NotificationRecipient` | A message plus the set of accounts it was sent to. `type` is currently a free string (`// todo: move to enum`). | — |
 | Sign-in code / OTP | `SignInOtpEntity`, `OtpCodeGeneratorService` | The one-time code sent to a phone number to authenticate; hashed at rest, never logged. | JWT access/refresh tokens, issued after OTP verification |
+| Password / login email | `AccountIdentity.hash`/`salt`, `AccountProfile.email` (unique, lowercased) | The email + password pair for password sign-in (ADR-0011). The password is stored only as a bcrypt hash and is 8–72 bytes. | The phone number used by OTP sign-in |
+| Password reset token | `AccountIdentity.resetTokenHash`, `resetTokenExpiresAt`; `restorePassword` / `resetPassword` | A random single-use token, valid 30 minutes, stored only as a sha256 hash and sent to the account's email. Consumed by `resetPassword`. | The OTP code (phone, 2 minutes, bcrypt) and JWT refresh tokens |
 
 ## Naming rules that follow from the above
 - Prisma **relation** fields are PascalCase matching the related model name (`AccountProfile`, `LastAccountRole`); **scalar** fields are camelCase (rule P1).
