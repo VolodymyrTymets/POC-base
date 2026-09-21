@@ -1,5 +1,7 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router';
 import { Header } from './components/Header';
+import { SignIn } from './pages/SignIn';
+import { SignUp } from './pages/SignUp';
 import { RequireAuth } from './session/RequireAuth';
 
 function Layout() {
@@ -18,6 +20,8 @@ export function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to="/account" replace />} />
+        <Route path="/sign-in" element={<SignIn />} />
+        <Route path="/sign-up" element={<SignUp />} />
         <Route element={<RequireAuth />}>
           <Route path="/account" element={<h1>Account</h1>} />
         </Route>
