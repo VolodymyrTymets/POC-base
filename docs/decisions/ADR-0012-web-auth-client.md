@@ -36,8 +36,8 @@ real GraphQL client. No web precedent existed, so the choices below are new.
 - **A password change or reset ends the session in the UI**, because the API clears the stored refresh
   token (ADR-0011): the session could not be refreshed later. Sign in shows a one-line notice.
 - **CORS:** `api/src/main.ts` enables it for `CORS_ORIGINS` (comma-separated), defaulting to the two local
-  web origins (`http://localhost:5173`, `:5174`). The env templates are protected paths, so the variable is
-  documented in `docs/RUNBOOK.md` rather than added to them.
+  web origins (`http://localhost:5173`, `:5174`). The variable is in both API env templates and documented in
+  `docs/RUNBOOK.md`.
 - **No new dependencies:** `Observable` is re-exported by `@apollo/client`, so the retry link needs no
   direct `rxjs` import; the app reaches Apollo's React bindings through `web/shared/api/react.ts`.
 

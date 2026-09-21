@@ -50,8 +50,8 @@ No env file is required for `codegen` on a fresh clone — it defaults to `../ap
 
 ## Web auth pages (KAN-13)
 - The API allows browser calls from `CORS_ORIGINS` (comma-separated, default `http://localhost:5173,http://localhost:5174`).
-  If `set-ports.sh` moved the web ports, set `CORS_ORIGINS` to the new origins in the API's env. The env
-  templates are protected paths, so the variable is not in them yet.
+  It is in both API env templates (`api/.env.example`, `api/.env.develoment.example`). If `set-ports.sh`
+  moved the web ports, set `CORS_ORIGINS` to the new origins in the API's env.
 - `web/packages/app` needs `VITE_GRAPHQL_URL` (copy `.env.development.example`, see "First run — web/") and
   throws at start-up without it. `.env.development` is only read in Vite's dev mode, so a production build has
   no source for it yet — a fork that deploys must supply it at build time.
