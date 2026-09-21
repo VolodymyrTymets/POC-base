@@ -7,6 +7,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { parseCorsOrigins } from './common/cors-origins';
 
 async function bootstrap() {
   // Nest's default body-parser limit is 100kb, far under FILE_MAX_SIZE
@@ -22,6 +23,7 @@ async function bootstrap() {
   // Base64 adds ~33% over raw bytes; leave headroom for the rest of the
   // GraphQL JSON envelope around `content`.
   app.useBodyParser('json', { limit: Math.ceil(fileMaxSize * 1.4) });
+  app.enableCors({ origin: parseCorsOrigins(process.env.CORS_ORIGINS) });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   await app.listen(process.env.PORT ?? 3001);
 }
