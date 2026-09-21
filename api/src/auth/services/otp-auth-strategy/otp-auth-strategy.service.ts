@@ -108,6 +108,13 @@ export class OtpAuthStrategyService extends JwtStrategyService {
       },
     });
 
+    // Verifying an OTP is what proves control of the phone; token issuance is
+    // shared with password sign-in, which proves nothing about the phone.
+    await this.prismaService.accountProfile.update({
+      where: { accountId: account.id },
+      data: { isPhoneVerified: true },
+    });
+
     return this.refreshTokens(account.id);
   }
 }

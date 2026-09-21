@@ -151,7 +151,9 @@ describe('JwtAuthStrategyService', () => {
       expect(identity.refreshToken.length).toBeGreaterThan(20);
     });
 
-    it('should mark account phone as verified', async () => {
+    // WHY: KAN-12 - was "should mark account phone as verified". Refreshing tokens must not verify a
+    // phone; verifyOtp owns that (human-approved in plan).
+    it('should not mark account phone as verified', async () => {
       const account = await createAccountWithIdentity('+6666666666');
 
       await jwtAuthStrategyService.refreshToken(account.id);
@@ -160,7 +162,7 @@ describe('JwtAuthStrategyService', () => {
         where: { accountId: account.id },
       });
 
-      expect(profile.isPhoneVerified).toBe(true);
+      expect(profile.isPhoneVerified).toBe(false);
     });
 
     it('should generate different tokens on subsequent calls', async () => {

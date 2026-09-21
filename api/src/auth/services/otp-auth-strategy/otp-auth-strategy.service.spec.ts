@@ -354,6 +354,34 @@ describe('OtpAuthStrategyService', () => {
       expect(updatedIdentity.otpExpiresAt).toBeNull();
     });
 
+    it('should mark the phone as verified only after a valid OTP', async () => {
+      const phoneNumber = '+6666666667';
+      await otpAuthStrategyService.signIn({ phoneNumber });
+
+      const identity = await prismaService.accountIdentity.findFirstOrThrow({
+        where: { Account: { AccountProfile: { phoneNumber } } },
+      });
+      const profileBefore = await prismaService.accountProfile.findFirstOrThrow(
+        { where: { accountId: identity.accountId } },
+      );
+
+      const otpCodeGenerator = new OtpCodeGeneratorService();
+      const code = otpCodeGenerator.generateCode();
+      const { hash } = await otpCodeGenerator.hashCode(code);
+      await prismaService.accountIdentity.update({
+        where: { accountId: identity.accountId },
+        data: { otpHash: hash },
+      });
+
+      await otpAuthStrategyService.verifyOtp({ phoneNumber, code });
+
+      const profileAfter = await prismaService.accountProfile.findFirstOrThrow({
+        where: { accountId: identity.accountId },
+      });
+      expect(profileBefore.isPhoneVerified).toBe(false);
+      expect(profileAfter.isPhoneVerified).toBe(true);
+    });
+
     it('should store hashed refresh token in database', async () => {
       const phoneNumber = '+7777777777';
       await otpAuthStrategyService.signIn({ phoneNumber });

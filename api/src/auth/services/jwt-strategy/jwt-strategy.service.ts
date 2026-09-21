@@ -41,11 +41,6 @@ export class JwtStrategyService {
       data: { refreshToken: hashedRefreshToken },
     });
 
-    await this.prismaService.accountProfile.update({
-      where: { accountId },
-      data: { isPhoneVerified: true },
-    });
-
     return { accessToken, refreshToken };
   }
 }

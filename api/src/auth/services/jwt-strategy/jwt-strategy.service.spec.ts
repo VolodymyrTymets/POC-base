@@ -110,7 +110,9 @@ describe('JwtStrategyService', () => {
       expect(identity.refreshToken.length).toBeGreaterThan(20);
     });
 
-    it('should mark account phone as verified', async () => {
+    // WHY: KAN-12 - was "should mark account phone as verified". Token issuance is shared with
+    // password sign-in, so it must not verify a phone; verifyOtp owns that (human-approved in plan).
+    it('should not mark account phone as verified', async () => {
       const account = await createAccountWithIdentity('+3333333333');
 
       await jwtStrategyService.refreshTokens(account.id);
@@ -119,7 +121,7 @@ describe('JwtStrategyService', () => {
         where: { accountId: account.id },
       });
 
-      expect(profile.isPhoneVerified).toBe(true);
+      expect(profile.isPhoneVerified).toBe(false);
     });
 
     it('should generate different tokens on subsequent calls', async () => {
