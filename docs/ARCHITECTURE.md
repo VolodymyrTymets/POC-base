@@ -13,8 +13,9 @@
 | `api/schema.gql` | generated GraphQL SDL (code-first, from resolver decorators) — never hand-edit | — | generated |
 | `api/test/` | e2e specs, `DataCooker`, GraphQL test client, service mocks | — | backend |
 | `web/` | Vite + React + TypeScript frontend, scaffolded by KAN-5 (ADR-0008) — own pnpm workspace, separate from `api/`'s | yes — two entrypoints, `app` and `admin` | frontend |
-| `web/packages/app/`, `web/packages/admin/` | the two apps — placeholder routes only so far, no real screens yet | — | frontend |
-| `web/shared/` | shared `components/`, `theme/` (Tailwind v4 tokens) and `api/` (GraphQL documents + `client-preset` output) consumed by both apps | — | frontend |
+| `web/packages/app/` | the customer app: auth pages (sign in/up, forgot/restore password, account), session provider, header (KAN-13, ADR-0012) | — | frontend |
+| `web/packages/admin/` | the admin app — placeholder routes only so far, no real screens yet | — | frontend |
+| `web/shared/` | shared `components/`, `theme/` (Tailwind v4 tokens) and `api/` (GraphQL documents, `client-preset` output, the authenticated Apollo client and token storage, ADR-0012) consumed by both apps | — | frontend |
 | `web/shared/api/generated/` | generated GraphQL types (`@graphql-codegen/client-preset`, from `api/schema.gql`) — never hand-edit | — | generated |
 | `web/Dockerfile` | dev-server-only image for `web/`, two targets (`app-dev`, `admin-dev`) — no production/nginx stage (KAN-2, ADR-0009) | — | frontend |
 | `docker-compose.yml` | local dev stack: `api`, `worker`, Postgres+PostGIS, Redis, and (since KAN-2, ADR-0009) `web-app`/`web-admin`; every service's host port is configurable via `set-ports.sh` for running more than one stack at once | — | backend |
@@ -32,6 +33,8 @@
 | Database schema | Prisma schema | `api/prisma/models/*.prisma` | `api/generated/prisma/**`, `api/prisma/migrations/**` | `pnpm --dir api run prisma-gen` (client), `pnpm --dir api run prisma-migrate` (migration, local DB only) |
 | File storage | `File.content` (Postgres `bytea`), served as a `data:` URI (ADR-0010) | `api/src/files/` (`FilesService`) | — | — |
 | `web/`'s GraphQL types | TypeScript, from `api/schema.gql` | `api/schema.gql` (not live introspection — see ADR-0008) | `web/shared/api/generated/**` | `pnpm --dir web run codegen` |
+
+The API enables CORS for the origins in `CORS_ORIGINS` (default: the two local web origins), so the browser apps can call `/graphql` (ADR-0012).
 
 There is no REST contract of note: `AppController` exposes a single `/test` placeholder route, not a real API surface.
 
@@ -71,6 +74,15 @@ random token (`AccountIdentity.resetTokenHash`, 30 min) and calls `NotifierServi
 → `EmailNotifierService` → BullMQ `EMAIL_QUEUE` → `email-sender` worker, which only logs at POC stage;
 `resetPassword` consumes the token with one conditional update and clears the stored refresh token. An
 unknown email gets the same response as a known one.
+
+### 5. Web auth session (ADR-0012)
+`web/packages/app` pages call `signIn` / `signUp` and store both JWTs in `localStorage`; `SessionProvider`
+reads the access token from storage (so any sign-out flips the UI) and loads `account` for the header. Every
+call goes through `web/shared/api/apollo-client.ts`: `SetContextLink` adds `Authorization`, and an `ErrorLink`
+answers a bare `Unauthorized` (`UNAUTHENTICATED`) by calling `refreshToken` (header `x-refresh-token`, one
+in-flight refresh) and retrying once. A failed refresh runs the sign-out process: `signOut` mutation (best
+effort), clear storage and the Apollo cache, redirect to Sign in. Wrong-credential errors share the same code
+but are never refreshed. A password change or reset also ends the session.
 
 ## External integrations
 | Service | Purpose | Failure mode | Sandbox available? |

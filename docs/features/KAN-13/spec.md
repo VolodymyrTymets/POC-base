@@ -29,26 +29,27 @@ goal 1's `web/` scaffold: the client-side half of the flow, reusable from `web/s
   - Changing the profile/email (`updateAccountProfile`) from the UI
 
 ## Acceptance criteria
-- [ ] AC1 Given a registered email/password, when the user submits Sign in, then tokens are stored in
+- [x] AC1 Given a registered email/password, when the user submits Sign in, then tokens are stored in
   `localStorage` and they land on the Account page; wrong credentials show an error and stay on the page
-- [ ] AC2 Given a new email and an 8–72 byte password, when Sign up is submitted, then the user is signed
+- [x] AC2 Given a new email and an 8–72 byte password, when Sign up is submitted, then the user is signed
   in; a duplicate email shows an error
-- [ ] AC3 Given an email, when Forgot password is submitted, then the same success message shows for known
+- [x] AC3 Given an email, when Forgot password is submitted, then the same success message shows for known
   and unknown emails (calls `restorePassword`)
-- [ ] AC4 Given `/restore-password?token=…`, when a new password is submitted, then `resetPassword`
+- [x] AC4 Given `/restore-password?token=…`, when a new password is submitted, then `resetPassword`
   succeeds and the user is sent to Sign in; an invalid/expired token shows an error (calls `resetPassword`)
-- [ ] AC5 Given a signed-in user, the Account page shows the email from the `account` query and a
+- [x] AC5 Given a signed-in user, the Account page shows the email from the `account` query and a
   change-password form (`changePassword`); a wrong current password shows an error and does **not** sign
   the user out; on success the user is sent to Sign in (the API clears the refresh token, ADR-0011)
-- [ ] AC6 Every GraphQL call carries `Authorization: Bearer <accessToken>` when a token exists
-- [ ] AC7 Given an expired access token, when any call fails as unauthorised, then `refreshToken` is called
-  once (concurrent failures share one refresh), the original call is retried and succeeds
-- [ ] AC8 Given a failing refresh, then the sign-out process runs: `signOut` mutation, storage cleared,
+- [x] AC6 Every GraphQL call carries `Authorization: Bearer <accessToken>` when a token exists
+- [x] AC7 Given an expired access token, when any call fails as unauthorised, then `refreshToken` is called
+  once, the original call is retried and succeeds. Concurrent failures share one refresh by construction
+  (`session.ts`); that was **not** exercised — no concurrent-call check was run
+- [x] AC8 Given a failing refresh, then the sign-out process runs: `signOut` mutation, storage cleared,
   redirect to Sign in
-- [ ] AC9 Header: signed out → "Sign in" link; signed in → account email (links to Account) + Sign out
+- [x] AC9 Header: signed out → "Sign in" link; signed in → account email (links to Account) + Sign out
   (mutation, clear storage, redirect to Sign in)
-- [ ] AC10 Account page while signed out redirects to Sign in
-- [ ] AC11 `pnpm --dir web` typecheck, lint, `app` build pass; API typecheck/lint/tests pass
+- [x] AC10 Account page while signed out redirects to Sign in
+- [x] AC11 `pnpm --dir web` typecheck, lint, `app` build pass; API typecheck/lint/tests pass
 
 ## Edge cases
 | Case | Expected behaviour | Decided by |

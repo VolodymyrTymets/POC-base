@@ -44,6 +44,16 @@ pnpm --dir web/packages/admin run build
 No env file is required for `codegen` on a fresh clone — it defaults to `../api/schema.gql` when
 `GRAPHQL_SCHEMA_PATH` isn't set (see `web/codegen.ts`, ADR-0008).
 
+## Web auth pages (KAN-13)
+- The API allows browser calls from `CORS_ORIGINS` (comma-separated, default `http://localhost:5173,http://localhost:5174`).
+  If `set-ports.sh` moved the web ports, set `CORS_ORIGINS` to the new origins in the API's env. The env
+  templates are protected paths, so the variable is not in them yet.
+- `web/packages/app` needs `VITE_GRAPHQL_URL` (already in `.env.development.example`) and throws at start-up
+  without it.
+- There is no email provider (ADR-0011): to finish "Forgot password", run the worker
+  (`pnpm --dir api run worker:start:dev`), submit the email on `/forgot-password`, read the token from the
+  worker's `[EMAIL] Password reset ...` log line and open `/restore-password?token=<token>`.
+
 ## Running two (or more) stacks side by side
 Every service's *host-side* port is configurable (ADR-0009) — container-internal ports never change
 (3001/5432/6379/5173/5174, fixed in `docker-compose.yml`) — so a second git worktree can run its own full
