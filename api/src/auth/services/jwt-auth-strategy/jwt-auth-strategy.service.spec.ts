@@ -262,6 +262,106 @@ describe('JwtAuthStrategyService', () => {
     });
   });
 
+  describe('changePassword', () => {
+    const password = 'correct horse';
+    let email: string;
+    let accountId: string;
+    let emailCounter = 0;
+
+    beforeEach(async () => {
+      email = `change.user.${++emailCounter}@example.com`;
+      await jwtAuthStrategyService.signUp({ email, password });
+      const profile = await prismaService.accountProfile.findFirstOrThrow({
+        where: { email },
+      });
+      accountId = profile.accountId;
+    });
+
+    it('should replace the password: the old one stops working and the new one signs in', async () => {
+      await jwtAuthStrategyService.changePassword(accountId, {
+        currentPassword: password,
+        newPassword: 'battery staple',
+      });
+
+      await expect(
+        jwtAuthStrategyService.signIn({ email, password }),
+      ).rejects.toThrow(UnauthorizedException);
+      const tokens = await jwtAuthStrategyService.signIn({
+        email,
+        password: 'battery staple',
+      });
+      expect(tokens.accessToken.length).toBeGreaterThan(0);
+    });
+
+    it('should reject a wrong current password and keep the stored hash', async () => {
+      const before = await prismaService.accountIdentity.findFirstOrThrow({
+        where: { accountId },
+      });
+
+      await expect(
+        jwtAuthStrategyService.changePassword(accountId, {
+          currentPassword: 'wrong password',
+          newPassword: 'battery staple',
+        }),
+      ).rejects.toThrow(INVALID_CREDENTIALS);
+
+      const after = await prismaService.accountIdentity.findFirstOrThrow({
+        where: { accountId },
+      });
+      expect(after.hash).toBe(before.hash);
+    });
+
+    it('should revoke the stored refresh token', async () => {
+      await jwtAuthStrategyService.signIn({ email, password });
+      const before = await prismaService.accountIdentity.findFirstOrThrow({
+        where: { accountId },
+      });
+      expect(before.refreshToken).not.toBeNull();
+
+      await jwtAuthStrategyService.changePassword(accountId, {
+        currentPassword: password,
+        newPassword: 'battery staple',
+      });
+
+      const after = await prismaService.accountIdentity.findFirstOrThrow({
+        where: { accountId },
+      });
+      expect(after.refreshToken).toBeNull();
+    });
+
+    it('should invalidate a pending password-reset token', async () => {
+      await prismaService.accountIdentity.update({
+        where: { accountId },
+        data: {
+          resetTokenHash: `pending-${accountId}`,
+          resetTokenExpiresAt: new Date(Date.now() + 60_000),
+        },
+      });
+
+      await jwtAuthStrategyService.changePassword(accountId, {
+        currentPassword: password,
+        newPassword: 'battery staple',
+      });
+
+      const after = await prismaService.accountIdentity.findFirstOrThrow({
+        where: { accountId },
+      });
+      expect(after.resetTokenHash).toBeNull();
+      expect(after.resetTokenExpiresAt).toBeNull();
+    });
+
+    it('should reject an OTP-only account that has no password yet', async () => {
+      const otpAccount = await createAccountWithIdentity('+7777000111');
+
+      await expect(
+        jwtAuthStrategyService.changePassword(otpAccount.id, {
+          currentPassword: password,
+          newPassword: 'battery staple',
+        }),
+      ).rejects.toThrow(INVALID_CREDENTIALS);
+    });
+  });
+
   describe('validateRefreshToken', () => {
     it('should return accountId when refresh token is valid', async () => {
       const account = await createAccountWithIdentity('+1234567890');

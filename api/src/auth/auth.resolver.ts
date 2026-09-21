@@ -3,6 +3,7 @@ import { SignInInput } from './dto/sign-in.input';
 import { VerifyOtpInput } from './dto/verify-otp.input';
 import { SignUpInput } from './dto/sign-up.input';
 import { PasswordSignInInput } from './dto/password-sign-in.input';
+import { ChangePasswordInput } from './dto/change-password.input';
 import { AuthTokensEntity } from './entities/auth-tokens.entity';
 import { OtpAuthStrategyService } from './services/otp-auth-strategy/otp-auth-strategy.service';
 import { JwtAuthStrategyService } from './services/jwt-auth-strategy/jwt-auth-strategy.service';
@@ -76,6 +77,22 @@ export class AuthResolver {
     @CurrentAccount() currentAccount: AuthAccount,
   ): Promise<AuthTokensEntity> {
     return this.jwtAuthStrategyService.refreshToken(currentAccount.accountId);
+  }
+
+  @UseGuards(GqlAuthGuard)
+  @Mutation(() => Boolean, {
+    description:
+      'Change the password of the signed-in account; every session must sign in again afterwards',
+  })
+  async changePassword(
+    @CurrentAccount() currentAccount: AuthAccount,
+    @Args('changePasswordInput') changePasswordInput: ChangePasswordInput,
+  ) {
+    await this.jwtAuthStrategyService.changePassword(
+      currentAccount.accountId,
+      changePasswordInput,
+    );
+    return true;
   }
 
   @UseGuards(GqlAuthGuard)

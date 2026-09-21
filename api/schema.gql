@@ -103,6 +103,11 @@ type Mutation {
 
   """Refresh access token using a valid refresh token."""
   refreshToken: AuthTokensEntity!
+
+  """
+  Change the password of the signed-in account; every session must sign in again afterwards
+  """
+  changePassword(changePasswordInput: ChangePasswordInput!): Boolean!
   signOut: Boolean!
 }
 
@@ -182,4 +187,12 @@ input PasswordSignInInput {
 
   """password"""
   password: String!
+}
+
+input ChangePasswordInput {
+  """the password the account has now"""
+  currentPassword: String!
+
+  """the new password, 8 to 72 bytes"""
+  newPassword: String!
 }

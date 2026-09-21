@@ -59,3 +59,4 @@ new mutation ships with an e2e spec that a fork can copy.
 | 3 | Reset-token TTL | 30 minutes | no |
 | 4 | Min password length | 8 | no |
 | 5 | Auth/security decisions (F2) | Plan approval is the human sign-off for the security choices above | yes — at approval |
+| 6 | Refresh tokens are stored as a bcrypt hash of the whole JWT, but bcrypt only reads the first 72 bytes, which are identical for every token of one account. Clearing the stored hash rejects old tokens, but the next sign-in stores a new hash that the old tokens match again (found while running R5 live, existing behaviour, also affects OTP). Fix in this PR (hash refresh tokens with sha256) or a separate ticket? | Not fixed here (B4/F2); AC4/AC7 hold literally, revocation lasts only until the next sign-in | **yes** |

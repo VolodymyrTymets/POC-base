@@ -14,6 +14,7 @@ import { Prisma } from '../../../../generated/prisma/client';
 import { AccountService } from '../../../account/account.service';
 import { SignUpInput } from '../../dto/sign-up.input';
 import { PasswordSignInInput } from '../../dto/password-sign-in.input';
+import { ChangePasswordInput } from '../../dto/change-password.input';
 import { AuthTokensEntity } from '../../entities/auth-tokens.entity';
 import {
   EMAIL_ALREADY_REGISTERED,
@@ -106,6 +107,41 @@ export class JwtAuthStrategyService extends JwtStrategyService {
     }
 
     return this.refreshTokens(profile.accountId);
+  }
+
+  async changePassword(
+    accountId: string,
+    changePasswordInput: ChangePasswordInput,
+  ): Promise<void> {
+    const identity = await this.prismaService.accountIdentity.findFirst({
+      where: { accountId, deleted: false },
+    });
+
+    // An OTP-only account has no hash yet; it sets a first password through
+    // restorePassword, so here it fails like any other wrong password.
+    const passwordMatches = await compare(
+      changePasswordInput.currentPassword,
+      identity?.hash ?? this.timingDummyHash,
+    );
+    if (!identity?.hash || !passwordMatches) {
+      throw new UnauthorizedException(INVALID_CREDENTIALS);
+    }
+
+    const { hash, salt } = await this.hashPassword(
+      changePasswordInput.newPassword,
+    );
+    // One update: the new hash lands together with the revocation of every
+    // credential issued under the old password (sessions and a pending reset).
+    await this.prismaService.accountIdentity.update({
+      where: { accountId },
+      data: {
+        hash,
+        salt,
+        refreshToken: null,
+        resetTokenHash: null,
+        resetTokenExpiresAt: null,
+      },
+    });
   }
 
   async validateRefreshToken(accountId: string, refreshToken: string) {
