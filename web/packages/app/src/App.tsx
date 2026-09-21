@@ -6,6 +6,7 @@ import { RestorePassword } from './pages/RestorePassword';
 import { SignIn } from './pages/SignIn';
 import { SignUp } from './pages/SignUp';
 import { RequireAuth } from './session/RequireAuth';
+import { routes } from './routes';
 
 function Layout() {
   return (
@@ -22,13 +23,13 @@ export function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route path="/" element={<Navigate to="/account" replace />} />
-        <Route path="/sign-in" element={<SignIn />} />
-        <Route path="/sign-up" element={<SignUp />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/restore-password" element={<RestorePassword />} />
+        <Route path={routes.home} element={<Navigate to={routes.account} replace />} />
+        <Route path={routes.signIn} element={<SignIn />} />
+        <Route path={routes.signUp} element={<SignUp />} />
+        <Route path={routes.forgotPassword} element={<ForgotPassword />} />
+        <Route path={routes.restorePassword} element={<RestorePassword />} />
         <Route element={<RequireAuth />}>
-          <Route path="/account" element={<Account />} />
+          <Route path={routes.account} element={<Account />} />
         </Route>
       </Route>
     </Routes>

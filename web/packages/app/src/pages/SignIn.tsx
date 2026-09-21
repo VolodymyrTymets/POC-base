@@ -14,6 +14,7 @@ import { takeSignInNotice } from '../notice';
 import { STORAGE_BLOCKED_MESSAGE } from '../messages';
 import { useSession } from '../session/SessionProvider';
 import { validateEmail } from '../validation';
+import { routes } from '../routes';
 
 export function SignIn() {
   const { isSignedIn, completeSignIn } = useSession();
@@ -24,7 +25,7 @@ export function SignIn() {
   const [notice] = useState(takeSignInNotice);
 
   if (isSignedIn) {
-    return <Navigate to="/account" replace />;
+    return <Navigate to={routes.account} replace />;
   }
 
   const onSubmit = async (event: FormEvent) => {
@@ -75,10 +76,10 @@ export function SignIn() {
         </button>
       </form>
       <p className="flex justify-between text-sm">
-        <Link to="/forgot-password" className="text-brand hover:underline">
+        <Link to={routes.forgotPassword} className="text-brand hover:underline">
           Forgot password?
         </Link>
-        <Link to="/sign-up" className="text-brand hover:underline">
+        <Link to={routes.signUp} className="text-brand hover:underline">
           Create an account
         </Link>
       </p>

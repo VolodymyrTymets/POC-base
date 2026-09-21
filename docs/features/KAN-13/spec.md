@@ -35,7 +35,7 @@ goal 1's `web/` scaffold: the client-side half of the flow, reusable from `web/s
   in; a duplicate email shows an error
 - [x] AC3 Given an email, when Forgot password is submitted, then the same success message shows for known
   and unknown emails (calls `restorePassword`)
-- [x] AC4 Given `/restore-password?token=…`, when a new password is submitted, then `resetPassword`
+- [x] AC4 Given `/auth/restore-password?token=…`, when a new password is submitted, then `resetPassword`
   succeeds and the user is sent to Sign in; an invalid/expired token shows an error (calls `resetPassword`)
 - [x] AC5 Given a signed-in user, the Account page shows the email from the `account` query and a
   change-password form (`changePassword`); a wrong current password shows an error and does **not** sign
@@ -58,7 +58,7 @@ goal 1's `web/` scaffold: the client-side half of the flow, reusable from `web/s
 | `signIn`/`signUp`/`changePassword`/`resetPassword` failures are also HTTP 401 (`INVALID_CREDENTIALS`, `INVALID_RESET_TOKEN`) | They must never trigger refresh or sign-out; those operations are excluded from the refresh path | plan (R3) |
 | `signOut` itself fails (access token already dead) | Storage is still cleared and the user redirected; the failure is logged, not swallowed silently | plan |
 | Two calls fail unauthorised at once | One shared refresh; both retried | plan |
-| Reset token delivery | No real email (ADR-0011): a developer builds `/restore-password?token=<token from worker log>` by hand | ADR-0011 |
+| Reset token delivery | No real email (ADR-0011): a developer builds `/auth/restore-password?token=<token from worker log>` by hand | ADR-0011 |
 | Tokens on refresh success | Both access and refresh token replaced (API returns both) | assumption |
 
 ## Open questions

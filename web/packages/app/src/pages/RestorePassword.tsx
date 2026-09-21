@@ -7,8 +7,9 @@ import { Field, FormCard, FormError, submitButtonClass } from '../components/for
 import { setSignInNotice } from '../notice';
 import { useSession } from '../session/SessionProvider';
 import { validateNewPassword } from '../validation';
+import { routes } from '../routes';
 
-// The reset link is /restore-password?token=<token>. There is no email provider
+// The reset link is /auth/restore-password?token=<token>. There is no email provider
 // at POC stage (ADR-0011): a developer builds the link from the worker's log.
 export function RestorePassword() {
   const [searchParams] = useSearchParams();
@@ -24,7 +25,7 @@ export function RestorePassword() {
     return (
       <FormCard title="Restore password">
         <FormError message="This reset link is missing its token." />
-        <Link to="/forgot-password" className="text-brand text-sm hover:underline">
+        <Link to={routes.forgotPassword} className="text-brand text-sm hover:underline">
           Request a new link
         </Link>
       </FormCard>
@@ -54,7 +55,7 @@ export function RestorePassword() {
       // Every session ends after a reset; this also redirects to Sign in.
       await signOut();
     } else {
-      navigate('/sign-in', { replace: true });
+      navigate(routes.signIn, { replace: true });
     }
   };
 

@@ -17,6 +17,7 @@ import {
 } from '@web/shared/api/auth/token-storage';
 import { useQuery } from '@web/shared/api/react';
 import { session, signedOutRedirect } from '../apollo';
+import { routes } from '../routes';
 
 type SessionValue = {
   isSignedIn: boolean;
@@ -37,7 +38,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const isSignedIn = accessToken !== null;
 
   useEffect(() => {
-    signedOutRedirect.current = () => navigate('/sign-in', { replace: true });
+    signedOutRedirect.current = () => navigate(routes.signIn, { replace: true });
     return () => {
       signedOutRedirect.current = null;
     };

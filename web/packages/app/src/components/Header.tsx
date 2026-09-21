@@ -1,18 +1,19 @@
 import { Link } from 'react-router';
 import { useSession } from '../session/SessionProvider';
+import { routes } from '../routes';
 
 export function Header() {
   const { isSignedIn, email, signOut } = useSession();
 
   return (
     <header className="flex items-center justify-between border-b border-slate-200 px-6 py-3">
-      <Link to="/" className="text-brand text-lg font-bold">
+      <Link to={routes.home} className="text-brand text-lg font-bold">
         poc-base
       </Link>
       <nav className="flex items-center gap-4 text-sm">
         {isSignedIn ? (
           <>
-            <Link to="/account" className="text-slate-700 hover:underline">
+            <Link to={routes.account} className="text-slate-700 hover:underline">
               {email ?? 'Account'}
             </Link>
             <button
@@ -24,7 +25,7 @@ export function Header() {
             </button>
           </>
         ) : (
-          <Link to="/sign-in" className="text-brand hover:underline">
+          <Link to={routes.signIn} className="text-brand hover:underline">
             Sign in
           </Link>
         )}

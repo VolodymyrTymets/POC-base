@@ -7,6 +7,7 @@ import { Field, FormCard, FormError, submitButtonClass } from '../components/for
 import { STORAGE_BLOCKED_MESSAGE } from '../messages';
 import { useSession } from '../session/SessionProvider';
 import { validateEmail, validateNewPassword } from '../validation';
+import { routes } from '../routes';
 
 export function SignUp() {
   const { isSignedIn, completeSignIn } = useSession();
@@ -16,7 +17,7 @@ export function SignUp() {
   const [error, setError] = useState<string | null>(null);
 
   if (isSignedIn) {
-    return <Navigate to="/account" replace />;
+    return <Navigate to={routes.account} replace />;
   }
 
   const onSubmit = async (event: FormEvent) => {
@@ -66,7 +67,7 @@ export function SignUp() {
       </form>
       <p className="text-sm">
         Already registered?{' '}
-        <Link to="/sign-in" className="text-brand hover:underline">
+        <Link to={routes.signIn} className="text-brand hover:underline">
           Sign in
         </Link>
       </p>

@@ -56,8 +56,8 @@ No env file is required for `codegen` on a fresh clone — it defaults to `../ap
   throws at start-up without it. `.env.development` is only read in Vite's dev mode, so a production build has
   no source for it yet — a fork that deploys must supply it at build time.
 - There is no email provider (ADR-0011): to finish "Forgot password", run the worker
-  (`pnpm --dir api run worker:start:dev`), submit the email on `/forgot-password`, read the token from the
-  worker's `[EMAIL] Password reset ...` log line and open `/restore-password?token=<token>`.
+  (`pnpm --dir api run worker:start:dev`), submit the email on `/auth/forgot-password`, read the token from the
+  worker's `[EMAIL] Password reset ...` log line and open `/auth/restore-password?token=<token>`.
 
 ## Running two (or more) stacks side by side
 Every service's *host-side* port is configurable (ADR-0009) — container-internal ports never change
