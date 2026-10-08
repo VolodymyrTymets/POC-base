@@ -23,11 +23,11 @@ must be able to exercise a cache hit.
   register specs — rule G2); changing TTLs or the cached models; removing the `superjson` comment is part of the port.
 
 ## Acceptance criteria
-- [ ] AC1 `cacheTransformer` round-trips `Date`, `Decimal`, `Buffer`, `bigint`, plain values, nested arrays/null unchanged.
-- [ ] AC2 `prisma.caching.ts` sets `transformer: cacheTransformer`.
-- [ ] AC3 With `cacheHits: true`, an e2e read of a `Date` and a `File.content` field returns the same shape as a miss; the spec fails without the transformer and passes with it.
-- [ ] AC4 Existing unit and e2e suites unchanged in result (baseline recorded first, B2).
-- [ ] AC5 typecheck, lint: no new errors vs baseline.
+- [x] AC1 `cacheTransformer` round-trips `Date`, `Decimal`, `Buffer`, `bigint`, plain values, nested arrays/null unchanged.
+- [x] AC2 `prisma.caching.ts` sets `transformer: cacheTransformer`.
+- [x] AC3 With `cacheHits: true`, an e2e read of a `Date` and a `File.content` field returns the same shape as a miss; the spec fails without the transformer and passes with it.
+- [x] AC4 Existing unit and e2e suites unchanged in result (baseline recorded first, B2).
+- [x] AC5 typecheck, lint: no new errors vs baseline.
 
 ## Edge cases
 | Case | Expected behaviour | Decided by |
