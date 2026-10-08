@@ -25,7 +25,7 @@ must be able to exercise a cache hit.
 ## Acceptance criteria
 - [x] AC1 `cacheTransformer` round-trips `Date`, `Decimal`, `Buffer`, `bigint`, plain values, nested arrays/null unchanged.
 - [x] AC2 `prisma.caching.ts` sets `transformer: cacheTransformer`.
-- [x] AC3 With `cacheHits: true`, an e2e read of a `Date` and a `File.content` field returns the same shape as a miss; the spec fails without the transformer and passes with it.
+- [x] AC3 With every read replayed through the cache transformer (`cache-hit-prisma.ts`), `AccountService.getAccountById` returns `Date` columns as `Date`s and the GraphQL `account { createdAt }` query succeeds; both specs fail with plain JSON and pass with the transformer. Bytes are proven by the unit spec only (`File.content` is not reachable through a cached GraphQL read in this repo).
 - [x] AC4 Existing unit and e2e suites unchanged in result (baseline recorded first, B2).
 - [x] AC5 typecheck, lint: no new errors vs baseline.
 

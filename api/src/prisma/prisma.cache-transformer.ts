@@ -1,9 +1,9 @@
 import { Prisma } from '../../generated/prisma/client';
 
 // The Redis query cache stores a result as JSON, which on its own turns a Date into an ISO string, a Decimal into a
-// string and a Buffer into `{ type, data }`. A cache hit would then hand services different types than a miss does
-// (`from.getTime is not a function`, `offerAmount.toNumber is not a function`). Each such value is tagged on the way
-// in and rebuilt on the way out, so a hit and a miss are the same shape.
+// string and bytes (a Uint8Array) into `{ "0": 1, "1": 2, ... }`. A cache hit would then hand services different types
+// than a miss does (`from.getTime is not a function`, `Buffer.from(content)` silently empty). Each such value is
+// tagged on the way in and rebuilt on the way out, so a hit and a miss are the same shape.
 const TAG = '$cacheType';
 type Tagged = { [TAG]: 'Date' | 'Decimal' | 'Bytes' | 'BigInt'; value: string };
 
@@ -46,9 +46,13 @@ export const cacheTransformer = {
         case 'Decimal':
           return new Prisma.Decimal(json.value);
         case 'Bytes':
-          return Buffer.from(json.value, 'base64');
+          return new Uint8Array(Buffer.from(json.value, 'base64'));
         case 'BigInt':
           return BigInt(json.value);
+        default:
+          // Unreachable for entries this version wrote; one from another version must fail loudly (D5) so the cache
+          // extension treats it as a miss instead of returning a record with a field silently dropped.
+          throw new Error(`Unknown cache type tag: ${String(json[TAG])}`);
       }
     }),
 };

@@ -12,22 +12,38 @@ describe('cacheTransformer', () => {
   });
 
   it('returns a Decimal as a Decimal, with its exact value', () => {
-    const result = roundTrip({ fee: new Prisma.Decimal('1234.56') }) as {
-      fee: Prisma.Decimal;
-    };
+    const result = roundTrip({ fee: new Prisma.Decimal('1234.56') }) as Record<
+      string,
+      unknown
+    >;
 
     expect(Prisma.Decimal.isDecimal(result.fee)).toBe(true);
-    expect(result.fee.toNumber()).toBe(1234.56);
+    expect(result.fee).toEqual(new Prisma.Decimal('1234.56'));
   });
 
   it('returns bytes and a bigint as themselves, and leaves plain values alone', () => {
     const value = {
-      content: Buffer.from([1, 2, 3]),
+      content: new Uint8Array([1, 2, 3]),
       count: 9007199254740993n,
       name: 'Kestrel',
       nested: [{ n: null, ok: true }],
     };
 
     expect(roundTrip(value)).toEqual(value);
+  });
+
+  it('returns bytes as a Uint8Array, as Prisma does on a miss', () => {
+    const result = roundTrip({ content: new Uint8Array([1, 2, 3]) }) as {
+      content: unknown;
+    };
+
+    expect(result.content).toBeInstanceOf(Uint8Array);
+    expect(Array.from(result.content as Uint8Array)).toEqual([1, 2, 3]);
+  });
+
+  it('throws on a tag this version did not write', () => {
+    expect(() =>
+      cacheTransformer.deserialize('{"$cacheType":"Unknown","value":"x"}'),
+    ).toThrow('Unknown cache type tag');
   });
 });
