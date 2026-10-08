@@ -61,6 +61,10 @@ describe('JwtStrategyService', () => {
     prismaService = app.get<PrismaService>(PrismaService);
   });
 
+  afterEach(async () => {
+    await testDatabase.afterEach();
+  });
+
   afterAll(async () => {
     await testDatabase.afterAll();
   });

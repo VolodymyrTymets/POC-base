@@ -1,6 +1,3 @@
-/**
- * @jest-environment node
- */
 import { PGlite } from '@electric-sql/pglite';
 import { PrismaClient } from 'generated/prisma/client';
 import { ITestDatabase } from './ITestDatabase';

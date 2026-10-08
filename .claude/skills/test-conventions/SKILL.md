@@ -59,6 +59,7 @@ describe('MyService', () => {
 `TestDatabase.beforeAll()` does not replay the Prisma migrations. `MigratedTemplate.getDump()` (`api/test/utils/MigratedTemplate/`) builds one PGlite database from `prisma/migrations/**` and then the seed items in `src/migrations/**` (rule P4), dumps it to `os.tmpdir()` as `poc-base-pglite-<hash>.tar`, and every suite loads that dump (about 0.5 s instead of about 3 s).
 
 - The hash covers every file under `prisma/migrations` and `src/migrations`, so a new migration or seed item makes the next run rebuild the template. Old `.tar` files in the temp dir are never deleted automatically and are safe to remove.
+- The hash also covers `src/{account,account-profile,account-role,files}` (the seed run executes those services; spec files excluded) and the installed PGlite version.
 - The first suite to ask takes an atomic lock directory (`<template>.lock`) and builds; parallel workers wait for the finished file, which is written by rename so it is never partial.
 - Isolation is per suite: each suite gets its own database from the dump. Within a suite, clean up what a test inserts.
 - `TestDatabase.beforeEach()` turns on jest fake timers (real `setTimeout` and `setImmediate`). Move the clock with `jest.setSystemTime(...)` to expire a token; never sleep.
@@ -366,6 +367,6 @@ See `api/src/auth/services/otp-auth-strategy/otp-auth-strategy.service.spec.ts` 
 
 **Timeout errors**: The first run after a migration or seed change rebuilds the template (a few seconds, once). A repeated `Exceeded timeout ... for a hook` in `beforeAll` usually means too many parallel workers for the machine; `jest-e2e.json` sets `maxWorkers` to 2 (lower it to 1 first).
 
-**`Timed out waiting for the PGlite template`**: a run was killed while building the template and left `<tmpdir>/poc-base-pglite-<hash>.tar.lock` behind. Delete that lock directory and rerun.
+**Hook timeouts or `Timed out waiting for the PGlite template` right after a killed run**: the killed run left `<tmpdir>/poc-base-pglite-<hash>.tar.lock` behind. A lock older than 20 s is taken over automatically, so rerun after that; or delete the lock directory yourself.
 
 **`SyntaxError` from `node_modules/.bin/jest`**: You are running the declared `test`/`test:e2e` npm script under pnpm. Use the `pnpm exec jest` invocations above instead (see root `docs/RUNBOOK.md`).

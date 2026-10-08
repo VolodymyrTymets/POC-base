@@ -71,6 +71,10 @@ describe('JwtAuthStrategyService', () => {
     accountService = app.get<AccountService>(AccountService);
   });
 
+  afterEach(async () => {
+    await testDatabase.afterEach();
+  });
+
   afterAll(async () => {
     await testDatabase.afterAll();
   });

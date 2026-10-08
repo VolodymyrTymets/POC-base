@@ -70,6 +70,10 @@ describe('OtpAuthStrategyService', () => {
     notifierService = app.get<NotifierService>(NotifierService);
   });
 
+  afterEach(async () => {
+    await testDatabase.afterEach();
+  });
+
   afterAll(async () => {
     await testDatabase.afterAll();
   });

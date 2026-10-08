@@ -37,6 +37,10 @@ describe('FileAssertService', () => {
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
+  afterEach(async () => {
+    await testDatabase.afterEach();
+  });
+
   afterAll(async () => {
     await testDatabase.afterAll();
   });

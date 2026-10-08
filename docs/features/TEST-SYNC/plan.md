@@ -20,7 +20,7 @@ Evidence for B2/B5. No files.
 ### R1 — #27: timeouts and fake timers (S)
 - the timeout is headroom only; R2 is the root-cause fix (say so in the PR body)
 - files: `api/test/jest-e2e.json` (`testTimeout` 30000), `DataCooker.ts` (`waitReady`, `beforeEach`/`afterEach`
-  fake timers, `VERBOSE`-gated logging, `@jest-environment node` header), 8 `api/test/**/*.e2e-spec.ts`
+  fake timers, the migration-replay logging is dropped with the replay, `@jest-environment node` header), 8 `api/test/**/*.e2e-spec.ts`
   (call `beforeEach`/`afterEach`; `sign-in-otp` and `refresh-token` sleeps → `jest.setSystemTime`)
 - test: the 8 e2e suites; the expiry tests prove the clock move works
 - executed: `jest --config ./test/jest-e2e.json` (CLAUDE.md e2e command)

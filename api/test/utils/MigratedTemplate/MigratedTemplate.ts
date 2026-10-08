@@ -27,8 +27,20 @@ export class MigratedTemplate implements IMigratedTemplate {
     __dirname,
     '../../../prisma/migrations',
   );
-  private readonly seedPath = path.join(__dirname, '../../../src/migrations');
-  private readonly lockTimeoutMs = 120_000;
+  private readonly seedSources = [
+    'migrations',
+    'account',
+    'account-profile',
+    'account-role',
+    'files',
+  ].map((dir) => path.join(__dirname, '../../../src', dir));
+  private readonly pglitePackageJson = path.join(
+    __dirname,
+    '../../../node_modules/@electric-sql/pglite/package.json',
+  );
+  private readonly lockTimeoutMs = 25_000;
+  // A build takes a few seconds; a lock older than this belongs to a run that was killed
+  private readonly staleLockMs = 20_000;
   private readonly templateName = 'poc-base-pglite';
 
   // The Prisma migrations in order, then the seed items (rule P4): the one schema every suite starts from
@@ -44,6 +56,18 @@ export class MigratedTemplate implements IMigratedTemplate {
       await pGlite.exec(fs.readFileSync(file, 'utf-8'));
     }
     const prisma = new PrismaClient({ adapter: new PrismaPGlite(pGlite) });
+    try {
+      await this.seed(prisma);
+    } catch (error) {
+      await pGlite.close();
+      throw error;
+    } finally {
+      await prisma.$disconnect();
+    }
+    return pGlite;
+  }
+
+  private async seed(prisma: PrismaClient): Promise<void> {
     const prismaFactory: IPrismaFactory = { create: () => prisma };
     const accountRoleService = new AccountRoleService(prisma, prismaFactory);
     const accountService = new AccountService(
@@ -63,8 +87,6 @@ export class MigratedTemplate implements IMigratedTemplate {
       accountProfileService,
       accountRoleService,
     ).runMigrations();
-    await prisma.$disconnect();
-    return pGlite;
   }
 
   // A database dump every suite loads instead of replaying every migration. The first suite to ask builds it
@@ -82,7 +104,10 @@ export class MigratedTemplate implements IMigratedTemplate {
       } catch (error) {
         if (!isErrnoException(error) || error.code !== 'EEXIST') throw error;
       }
-      if (elected) {
+      if (elected && fs.existsSync(file)) {
+        // Another worker finished between the `existsSync` above and taking the lock
+        fs.rmdirSync(lock);
+      } else if (elected) {
         try {
           const pGlite = await this.build();
           const dump = await pGlite.dumpDataDir('none');
@@ -93,8 +118,12 @@ export class MigratedTemplate implements IMigratedTemplate {
         } finally {
           fs.rmdirSync(lock);
         }
+      } else if (this.isStale(lock)) {
+        fs.rmSync(lock, { recursive: true, force: true });
       } else if (Date.now() > deadline) {
-        throw new Error(`Timed out waiting for the PGlite template ${file}`);
+        throw new Error(
+          `Timed out waiting for the PGlite template ${file}; delete the lock directory ${lock} if no other run is active`,
+        );
       } else {
         await sleep(200);
       }
@@ -102,13 +131,26 @@ export class MigratedTemplate implements IMigratedTemplate {
     return new Blob([fs.readFileSync(file)]);
   }
 
+  private isStale(lock: string): boolean {
+    try {
+      return Date.now() - fs.statSync(lock).mtimeMs > this.staleLockMs;
+    } catch (error) {
+      // The builder removed the lock between our mkdir and this check: not stale, the loop re-reads the file
+      if (isErrnoException(error) && error.code === 'ENOENT') return false;
+      throw error;
+    }
+  }
+
   // Keyed by the content of everything that shapes the template, so a new migration or seed item rebuilds it
   private templatePath(): string {
     const hash = crypto.createHash('sha1');
+    // The seed run executes these services, and a PGlite upgrade changes the dump format
     for (const file of [
       ...this.filesUnder(this.migrationsPath),
-      ...this.filesUnder(this.seedPath),
+      ...this.seedSources.flatMap((dir) => this.filesUnder(dir)),
+      this.pglitePackageJson,
     ]) {
+      if (file.endsWith('.spec.ts')) continue;
       hash.update(file).update(fs.readFileSync(file));
     }
     return path.join(
