@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
 import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
+import { listenOnLoopback } from '../utils/e2e-services/listen-on-loopback';
 import type { GraphQLResponseType } from '../utils/e2e-services/interfaces/types';
 import { PrismaAdapterMockFactory } from '../utils/mock-services/prisma.adapter.factory';
 import { PrismaAdapterFactory } from '../../src/prisma/prisma.adapter.factory';
@@ -87,7 +88,7 @@ describe('Change password (e2e)', () => {
       .compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
+    await listenOnLoopback(app);
   });
 
   it('Should change the password: the old one stops working, the new one signs in', async () => {

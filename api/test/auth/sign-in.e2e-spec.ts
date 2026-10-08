@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
 import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
+import { listenOnLoopback } from '../utils/e2e-services/listen-on-loopback';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import type { GraphQLResponseType } from '../utils/e2e-services/interfaces/types';
 import { SignInService } from '../utils/e2e-services/sign-in.service';
@@ -70,7 +71,7 @@ describe('Sign in with password (e2e)', () => {
     prismaService = await moduleFixture.resolve(PrismaService);
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
+    await listenOnLoopback(app);
     signInService = new SignInService(app);
   });
 

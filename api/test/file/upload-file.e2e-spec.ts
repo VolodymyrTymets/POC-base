@@ -3,6 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
 import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
+import { listenOnLoopback } from '../utils/e2e-services/listen-on-loopback';
 import { SignInService } from '../utils/e2e-services/sign-in.service';
 import { FileE2EService } from '../utils/e2e-services/file-e2e.service';
 import { PrismaAdapterMockFactory } from '../utils/mock-services/prisma.adapter.factory';
@@ -28,7 +29,7 @@ describe('Upload file (e2e)', () => {
       .compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
+    await listenOnLoopback(app);
     signInService = new SignInService(app);
     fileE2EService = new FileE2EService(app);
   });

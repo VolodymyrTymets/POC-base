@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
 import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
+import { listenOnLoopback } from '../utils/e2e-services/listen-on-loopback';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { OtpCodeGeneratorService } from '../../src/auth/services/otp-auth-strategy/otp-code-generator/otp-code-generator.service';
 import type { GraphQLResponseType } from '../utils/e2e-services/interfaces/types';
@@ -35,7 +36,7 @@ describe('Sign in otp (e2e)', () => {
     prismaService = await moduleFixture.resolve(PrismaService);
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
+    await listenOnLoopback(app);
     signInService = new SignInService(app);
   });
 

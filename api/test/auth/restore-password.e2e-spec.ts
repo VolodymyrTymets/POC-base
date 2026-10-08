@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
 import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
+import { listenOnLoopback } from '../utils/e2e-services/listen-on-loopback';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { NotifierService } from '../../src/notifier/notifier.service';
 import { NotifierTypes } from '../../src/notifier/notifier.service.interface';
@@ -105,7 +106,7 @@ describe('Restore password (e2e)', () => {
     );
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
+    await listenOnLoopback(app);
   });
 
   it('Should restore then reset: the new password works and the old one does not', async () => {
