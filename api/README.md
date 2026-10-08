@@ -34,7 +34,7 @@ see `.env.development.example` file for more information
 > the rest of the variables should be the same as in the `.env` file
 
 ## Run tests
-The main principle of all tests is to run it with a real data. So, before running tests, we init the database, and clean it after. We use PgLite for keep the database in memory for faster tests runnings. The main utils for preperation and cleaning the database are in the `test/utils/DataCookere.ts` file.
+The main principle of all tests is to run it with a real data. So, before running tests, we init the database, and clean it after. We use PgLite for keep the database in memory for faster tests runnings. The main utils for preparing and cleaning the database are `test/utils/TestDatabase/TestDatabase.ts` (per-suite database) and `test/utils/MigratedTemplate/MigratedTemplate.ts` (the migrated, seeded dump every suite loads).
 For more information about testing, check out the ``.claude/skills/test-skill.md`` file.
 ```
 To run the tests,

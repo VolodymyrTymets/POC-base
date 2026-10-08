@@ -11,7 +11,7 @@
 | `api/prisma/` | Prisma schema (split across `models/*.prisma`) and migrations | — | backend |
 | `api/generated/prisma/` | generated Prisma Client — never hand-edit | — | generated |
 | `api/schema.gql` | generated GraphQL SDL (code-first, from resolver decorators) — never hand-edit | — | generated |
-| `api/test/` | e2e specs, `DataCooker`, GraphQL test client, service mocks | — | backend |
+| `api/test/` | e2e specs, `TestDatabase` + `MigratedTemplate` (migrated PGlite dump cached in the OS temp dir), GraphQL test client, service mocks | — | backend |
 | `web/` | Vite + React + TypeScript frontend, scaffolded by KAN-5 (ADR-0008) — own pnpm workspace, separate from `api/`'s | yes — two entrypoints, `app` and `admin` | frontend |
 | `web/packages/app/` | the customer app: auth pages (sign in/up, forgot/restore password, account), session provider, header (KAN-13, ADR-0012) | — | frontend |
 | `web/packages/admin/` | the admin app — placeholder routes only so far, no real screens yet | — | frontend |
@@ -42,7 +42,7 @@ There is no REST contract of note: `AppController` exposes a single `/test` plac
 | Env | URL | Database | Who may touch it |
 |-----|-----|----------|------------------|
 | local | `http://localhost:3001/graphql` | local Postgres via `docker-compose.yml` (`.env.development`) | anyone |
-| test | in-process | PGlite in-memory, via `DataCooker` (`.env.test`) | anyone, automatically |
+| test | in-process | PGlite in-memory, via `TestDatabase` loading the `MigratedTemplate` dump (`.env.test`) | anyone, automatically |
 | staging | *(not yet defined in this repo — no CI/deploy pipeline exists)* | | team |
 | production | *(not yet defined in this repo)* | | **not the agent** (rule C5) |
 
@@ -92,7 +92,7 @@ but are never refreshed. A password change or reset also ends the session.
 | Sentry | error tracking (`@sentry/nestjs`) | silent — errors just aren't reported | disabled locally (`enabled: NODE_ENV !== 'local'` in `api/src/instrument.ts`) |
 
 ## Known constraints and landmines
-- `account.service.ts` writes to a `Customers` relation and `src/migrations/items.development/init.customer.migration.ts` reads `this.prisma.customer` — **no `Customer` model exists in the Prisma schema.** Confirmed broken (`tsc --noEmit`, `pnpm run build`) — and bigger than previously documented here: `MigrationsModule.onModuleInit()` runs `InitCustomerMigration` whenever `NODE_ENV` is `local`/`test`/`development`, so **the app fails to boot at all** under `pnpm --dir api run start:dev` with the committed `.env` (confirmed KAN-8, 2026-09-17), and the same crash takes down `DataCooker.beforeAll()` for every suite that uses it — 5 of 10 unit test suites and all 4 e2e suites fail, not just `sign-in-otp.e2e-spec.ts`. See `docs/RUNBOOK.md`'s known-failures table. Needs a real fix, not covered by KAN-8 (rule B4 — bigger than a package-manager swap) — tracked as KAN-4.
+- `account.service.ts` writes to a `Customers` relation and `src/migrations/items.development/init.customer.migration.ts` reads `this.prisma.customer` — **no `Customer` model exists in the Prisma schema.** Confirmed broken (`tsc --noEmit`, `pnpm run build`) — and bigger than previously documented here: `MigrationsModule.onModuleInit()` runs `InitCustomerMigration` whenever `NODE_ENV` is `local`/`test`/`development`, so **the app fails to boot at all** under `pnpm --dir api run start:dev` with the committed `.env` (confirmed KAN-8, 2026-09-17), and the same crash takes down `TestDatabase.beforeAll()` for every suite that uses it — 5 of 10 unit test suites and all 4 e2e suites fail, not just `sign-in-otp.e2e-spec.ts`. See `docs/RUNBOOK.md`'s known-failures table. Needs a real fix, not covered by KAN-8 (rule B4 — bigger than a package-manager swap) — tracked as KAN-4.
 - ~~`docker-compose.yml`'s `env_file: .env.development` resolves relative to the repo root...~~ **Fixed as
   of KAN-2 (2026-09-18)** — along with the `api`/`worker` build-context landmine and the Postgres
   healthcheck db-name mismatch that used to be documented alongside this one. See `docs/RUNBOOK.md`'s

@@ -86,6 +86,7 @@ healthcheck db-name bugs that used to block `api`/`worker` here are fixed — se
 See the command map in `CLAUDE.md` — that is the canonical list.
 
 ## Undocumented steps everyone knows
+- Tests load a cached PGlite dump from the OS temp dir (`poc-base-pglite-<hash>.tar`, built on the first run and rebuilt when `prisma/migrations` or `src/migrations` change). If a run is killed mid-build, delete the leftover `.tar.lock` directory next to it — see `.claude/skills/test-conventions/SKILL.md`.
 - `schema.gql` regenerates itself on `start:dev`/`build` — you do not run a separate schema codegen step, but you do need the app to boot successfully once for it to update.
 - Seed/reference data (roles, admin/dev fixtures) is not part of `prisma migrate` — it runs separately via the `IMigrationItem`s in `api/src/migrations/items/` (all environments) and `api/src/migrations/items.development/` (dev only), triggered by `docker-prisma-migration.sh` or on app boot through `MigrationsModule`.
 - `api/.env.test` intentionally leaves `DATABASE_URL` commented out — tests use PGlite (`DATABASE_DIR`), not a real Postgres connection.
