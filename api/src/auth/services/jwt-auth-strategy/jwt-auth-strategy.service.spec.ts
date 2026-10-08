@@ -6,7 +6,7 @@ import { PrismaModule } from '../../../prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule } from '@nestjs/config';
-import { DataCooker } from '../../../../test/utils/DataCooker/DataCooker';
+import { TestDatabase } from '../../../../test/utils/TestDatabase/TestDatabase';
 import { PrismaAdapterMockFactory } from '../../../../test/utils/mock-services/prisma.adapter.factory';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { PrismaAdapterFactory } from '../../../prisma/prisma.adapter.factory';
@@ -29,14 +29,14 @@ describe('JwtAuthStrategyService', () => {
   let accountService: AccountService;
   // NotifierService is the boundary to the queue, so it is the mocked edge here
   const notifierService = { notifyAboutPasswordReset: jest.fn() };
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
-    await dataCooker.beforeEach();
+    await testDatabase.beforeEach();
     notifierService.notifyAboutPasswordReset.mockReset();
     const app: TestingModule = await Test.createTestingModule({
       imports: [
@@ -61,7 +61,7 @@ describe('JwtAuthStrategyService', () => {
       ],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
 
     jwtAuthStrategyService = app.get<JwtAuthStrategyService>(
@@ -71,8 +71,12 @@ describe('JwtAuthStrategyService', () => {
     accountService = app.get<AccountService>(AccountService);
   });
 
+  afterEach(async () => {
+    await testDatabase.afterEach();
+  });
+
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 
   async function createAccountWithIdentity(phoneNumber: string) {
@@ -189,7 +193,7 @@ describe('JwtAuthStrategyService', () => {
     let emailCounter = 0;
 
     beforeEach(async () => {
-      // DataCooker keeps rows between tests in a file, so each test gets its own email
+      // TestDatabase keeps rows between tests in a file, so each test gets its own email
       email = `signin.user.${++emailCounter}@example.com`;
       await jwtAuthStrategyService.signUp({ email, password });
     });
@@ -541,7 +545,10 @@ describe('JwtAuthStrategyService', () => {
       it('should clear a pending OTP when the password is reset', async () => {
         await prismaService.accountIdentity.update({
           where: { accountId },
-          data: { otpHash: 'pending-otp', otpExpiresAt: new Date(Date.now() + 60_000) },
+          data: {
+            otpHash: 'pending-otp',
+            otpExpiresAt: new Date(Date.now() + 60_000),
+          },
         });
         const token = await jwtAuthStrategyService.restorePassword({ email });
 

@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
 import { FilesService } from './files.service';
 import { PrismaModule } from '../prisma/prisma.module';
-import { DataCooker } from '../../test/utils/DataCooker/DataCooker';
+import { TestDatabase } from '../../test/utils/TestDatabase/TestDatabase';
 import { PrismaAdapterMockFactory } from '../../test/utils/mock-services/prisma.adapter.factory';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrismaAdapterFactory } from '../prisma/prisma.adapter.factory';
@@ -12,14 +12,14 @@ describe('FilesService', () => {
   let service: FilesService;
   let prismaService: PrismaService;
   let currentAccount: AuthAccount;
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
-    await dataCooker.beforeEach();
+    await testDatabase.beforeEach();
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -31,7 +31,7 @@ describe('FilesService', () => {
       providers: [FilesService],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
 
     service = module.get<FilesService>(FilesService);
@@ -43,8 +43,12 @@ describe('FilesService', () => {
     currentAccount = { accountId: account.id } as AuthAccount;
   });
 
+  afterEach(async () => {
+    await testDatabase.afterEach();
+  });
+
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 
   describe('createFile', () => {
@@ -119,7 +123,11 @@ describe('FilesService', () => {
     it('includes content when explicitly requested', async () => {
       const original = Buffer.from('secret bytes');
       const created = await service.createFile(
-        { name: 'test.png', mimeType: 'image/png', content: original.toString('base64') },
+        {
+          name: 'test.png',
+          mimeType: 'image/png',
+          content: original.toString('base64'),
+        },
         currentAccount,
       );
 

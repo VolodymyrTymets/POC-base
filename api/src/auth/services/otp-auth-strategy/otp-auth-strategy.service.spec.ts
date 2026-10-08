@@ -7,7 +7,7 @@ import { PrismaModule } from '../../../prisma/prisma.module';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule } from '@nestjs/config';
-import { DataCooker } from '../../../../test/utils/DataCooker/DataCooker';
+import { TestDatabase } from '../../../../test/utils/TestDatabase/TestDatabase';
 import { PrismaAdapterMockFactory } from '../../../../test/utils/mock-services/prisma.adapter.factory';
 import { AccountService } from '../../../account/account.service';
 import { AccountProfileService } from '../../../account-profile/account-profile.service';
@@ -23,17 +23,17 @@ describe('OtpAuthStrategyService', () => {
   let otpAuthStrategyService: OtpAuthStrategyService;
   let prismaService: PrismaService;
   let notifierService: NotifierService;
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   const testPhoneNumber = '+1234567890';
   const testPhoneNumber2 = '+9876543210';
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
-    await dataCooker.beforeEach();
+    await testDatabase.beforeEach();
     const app: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -60,7 +60,7 @@ describe('OtpAuthStrategyService', () => {
       ],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
 
     otpAuthStrategyService = app.get<OtpAuthStrategyService>(
@@ -70,8 +70,12 @@ describe('OtpAuthStrategyService', () => {
     notifierService = app.get<NotifierService>(NotifierService);
   });
 
+  afterEach(async () => {
+    await testDatabase.afterEach();
+  });
+
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 
   it('should be defined', () => {

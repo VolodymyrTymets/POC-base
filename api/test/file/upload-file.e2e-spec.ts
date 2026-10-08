@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
-import { DataCooker } from '../utils/DataCooker/DataCooker';
+import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
+import { listenOnLoopback } from '../utils/e2e-services/listen-on-loopback';
 import { SignInService } from '../utils/e2e-services/sign-in.service';
 import { FileE2EService } from '../utils/e2e-services/file-e2e.service';
 import { PrismaAdapterMockFactory } from '../utils/mock-services/prisma.adapter.factory';
@@ -12,22 +13,23 @@ describe('Upload file (e2e)', () => {
   let app: INestApplication<App>;
   let signInService: SignInService;
   let fileE2EService: FileE2EService;
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
+    await testDatabase.beforeEach();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
+    await listenOnLoopback(app);
     signInService = new SignInService(app);
     fileE2EService = new FileE2EService(app);
   });
@@ -194,11 +196,12 @@ describe('Upload file (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
+    await testDatabase.afterEach();
   });
 
   afterAll(async () => {
-    if (dataCooker) {
-      await dataCooker.afterAll();
+    if (testDatabase) {
+      await testDatabase.afterAll();
     }
   });
 });

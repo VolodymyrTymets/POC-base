@@ -3,7 +3,8 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
-import { DataCooker } from '../utils/DataCooker/DataCooker';
+import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
+import { listenOnLoopback } from '../utils/e2e-services/listen-on-loopback';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import type { GraphQLResponseType } from '../utils/e2e-services/interfaces/types';
 import { AccountRoleType } from '../../generated/prisma/enums';
@@ -19,7 +20,7 @@ describe('Sign up with password (e2e)', () => {
   let app: INestApplication<App>;
   let prismaService: PrismaService;
 
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   const signUp = async (email: string, password: string) =>
     (await request(app.getHttpServer())
@@ -38,20 +39,21 @@ describe('Sign up with password (e2e)', () => {
     [response.body.errors?.[0].extensions.originalError.message].flat();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
+    await testDatabase.beforeEach();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
     prismaService = await moduleFixture.resolve(PrismaService);
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
+    await listenOnLoopback(app);
   });
 
   it('Should sign up, store a hashed password and return usable tokens', async () => {
@@ -156,9 +158,10 @@ describe('Sign up with password (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
+    await testDatabase.afterEach();
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 });

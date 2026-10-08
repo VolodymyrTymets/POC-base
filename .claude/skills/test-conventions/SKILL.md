@@ -12,7 +12,8 @@ This guide covers the testing patterns and best practices used in the `api/` pro
 The project uses **Jest** for unit tests and **e2e tests**, with:
 - **PGlite**: In-memory PostgreSQL for fast test execution (no external DB needed)
 - **PostGIS**: Available in tests for geospatial queries
-- **DataCooker**: Utility for managing test database lifecycle
+- **TestDatabase**: Utility for managing the per-suite test database lifecycle
+- **MigratedTemplate**: Builds the migrated and seeded database once and hands every suite a dump of it
 - **Supertest**: HTTP testing library for e2e tests
 - **Jest Spies**: Mocking external dependencies while keeping real database
 
@@ -21,30 +22,30 @@ The project uses **Jest** for unit tests and **e2e tests**, with:
 - **Unit Tests**: `api/src/**/*.spec.ts` (jest config from `api/test/jest.json`)
 - **E2E Tests**: `api/test/**/*.e2e-spec.ts` (jest config from `api/test/jest-e2e.json`)
 - **Test Utilities**: `api/test/utils/**/*.ts`
-    - `DataCooker`: Manages database lifecycle
+    - `TestDatabase`: Manages database lifecycle
     - `e2e-sercices/**/*.ts`: Provides GraphQL client for e2e tests, queries and mutations
     - `mock-services/**/*.ts`: Mocks external services (e.g. AWS S3, Stripe, Twilio)
 
-## DataCooker Lifecycle
+## TestDatabase Lifecycle
 
-All tests using the database must use `DataCooker` for proper setup/teardown:
+All tests using the database must use `TestDatabase` for proper setup/teardown:
 
 ```typescript
-import { DataCooker } from 'test/utils/DataCooker/DataCooker';
+import { TestDatabase } from 'test/utils/TestDatabase/TestDatabase';
 
 describe('MyService', () => {
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll(); // Initializes PGlite, runs migrations
+    await testDatabase.beforeAll(); // Initializes PGlite from the migrated template
   });
 
   beforeEach(async () => {
-    await dataCooker.beforeEach(); // Optional: runs before each test
+    await testDatabase.beforeEach(); // Optional: runs before each test
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll(); // Cleanup
+    await testDatabase.afterAll(); // Cleanup
   });
 
   // tests...
@@ -52,6 +53,17 @@ describe('MyService', () => {
 ```
 
 **Important**: After each test, you must remove data inserted during the test. This is typically handled automatically or by using database delete operations in `afterEach` hooks.
+
+## The migrated template
+
+`TestDatabase.beforeAll()` does not replay the Prisma migrations. `MigratedTemplate.getDump()` (`api/test/utils/MigratedTemplate/`) builds one PGlite database from `prisma/migrations/**` and then the seed items in `src/migrations/**` (rule P4), dumps it to `os.tmpdir()` as `poc-base-pglite-<hash>.tar`, and every suite loads that dump (about 0.5 s instead of about 3 s).
+
+- The hash covers every file under `prisma/migrations` and `src/migrations`, so a new migration or seed item makes the next run rebuild the template. Old `.tar` files in the temp dir are never deleted automatically and are safe to remove.
+- The hash also covers `src/{account,account-profile,account-role,files}` (the seed run executes those services; spec files excluded) and the installed PGlite version.
+- The first suite to ask takes an atomic lock directory (`<template>.lock`) and builds; parallel workers wait for the finished file, which is written by rename so it is never partial.
+- Isolation is per suite: each suite gets its own database from the dump. Within a suite, clean up what a test inserts.
+- `TestDatabase.beforeEach()` turns on jest fake timers (real `setTimeout` and `setImmediate`). Move the clock with `jest.setSystemTime(...)` to expire a token; never sleep.
+- e2e apps start with `listenOnLoopback(app)` (`test/utils/e2e-services/listen-on-loopback.ts`) instead of `app.init()`, so supertest never hits a port held by another process on macOS.
 
 ## Unit Test Pattern
 
@@ -61,7 +73,7 @@ Use this template for testing services with real database:
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException } from '@nestjs/common';
 import { MyService } from './my.service';
-import { DataCooker } from 'test/utils/DataCooker/DataCooker';
+import { TestDatabase } from 'test/utils/TestDatabase/TestDatabase';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -69,14 +81,14 @@ import { PrismaModule } from '../prisma/prisma.module';
 describe('MyService', () => {
   let myService: MyService;
   let prismaService: PrismaService;
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
-    await dataCooker.beforeEach();
+    await testDatabase.beforeEach();
     const app: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -94,7 +106,7 @@ describe('MyService', () => {
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 
   it('should be defined', () => {
@@ -172,16 +184,16 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
-import { DataCooker } from '../utils/DataCooker/DataCooker';
+import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
 describe('Feature (e2e)', () => {
   let app: INestApplication<App>;
   let prismaService: PrismaService;
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
@@ -199,7 +211,7 @@ describe('Feature (e2e)', () => {
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 
   it('should complete full user flow', async () => {
@@ -349,10 +361,12 @@ See `api/src/auth/services/otp-auth-strategy/otp-auth-strategy.service.spec.ts` 
 
 **"Cannot find module" errors**: Check TestingModule imports include all required modules
 
-**Database state bleeding between tests**: Ensure DataCooker.beforeEach() is called or data is cleaned up
+**Database state bleeding between tests**: Ensure TestDatabase.beforeEach() is called or data is cleaned up
 
 **GraphQL schema not found**: Some e2e tests need the full app initialization - use `AppModule` not individual modules
 
-**Timeout errors**: PGlite initialization can take time - adjust Jest timeout if needed
+**Timeout errors**: The first run after a migration or seed change rebuilds the template (a few seconds, once). A repeated `Exceeded timeout ... for a hook` in `beforeAll` usually means too many parallel workers for the machine; `jest-e2e.json` sets `maxWorkers` to 2 (lower it to 1 first).
+
+**Hook timeouts or `Timed out waiting for the PGlite template` right after a killed run**: the killed run left `<tmpdir>/poc-base-pglite-<hash>.tar.lock` behind. A lock older than 20 s is taken over automatically, so rerun after that; or delete the lock directory yourself.
 
 **`SyntaxError` from `node_modules/.bin/jest`**: You are running the declared `test`/`test:e2e` npm script under pnpm. Use the `pnpm exec jest` invocations above instead (see root `docs/RUNBOOK.md`).

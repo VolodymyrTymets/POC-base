@@ -5,7 +5,7 @@ import { EmailNotifierService } from './email-notifier.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrismaAdapterFactory } from '../prisma/prisma.adapter.factory';
-import { DataCooker } from '../../test/utils/DataCooker/DataCooker';
+import { TestDatabase } from '../../test/utils/TestDatabase/TestDatabase';
 import { PrismaAdapterMockFactory } from '../../test/utils/mock-services/prisma.adapter.factory';
 import {
   QUEUE_NAME,
@@ -17,10 +17,10 @@ describe('EmailNotifierService', () => {
   let prismaService: PrismaService;
   // Redis is the external edge here; the database is the real PGlite one.
   const emailQueue = { add: jest.fn() };
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
@@ -36,14 +36,14 @@ describe('EmailNotifierService', () => {
       ],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
     emailNotifierService = app.get(EmailNotifierService);
     prismaService = app.get(PrismaService);
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 
   const createAccount = (profile: { email?: string; phoneNumber?: string }) =>

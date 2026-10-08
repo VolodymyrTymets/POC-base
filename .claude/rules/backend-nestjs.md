@@ -26,5 +26,5 @@ Read `backend-core.md` first — this file only adds what is specific to Nest.
 8. **Guards** carry authentication and role authorization (`GqlAuthGuard`, `RoleGuard` + `@Roles(...)`); per-record ownership checks stay in an `*AssertService`, not the guard (rule P3).
 9. Interceptors are for cross-cutting concerns (logging, caching) — never for business logic.
 10. Request-scoped providers only with a stated reason: they disable Nest's singleton optimisation.
-11. Tests: `Test.createTestingModule` against a real PGlite database via `DataCooker` (rule P5) — not a mocked repository; e2e through the real app with `supertest`, guards active.
+11. Tests: `Test.createTestingModule` against a real PGlite database via `TestDatabase` (rule P5) — not a mocked repository; e2e through the real app with `supertest`, guards active.
 12. Layout per feature: `<feature>.module.ts`, `<feature>.resolver.ts`, `<feature>.service.ts`, `dto/`, `entities/`, specs beside the code. Controllers are the exception, not the norm — this API is GraphQL-first; a REST `*.controller.ts` needs a reason.

@@ -3,7 +3,9 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
-  "maxWorkers": 4,
+  "maxWorkers": 2,
+  "workerIdleMemoryLimit": "1500MB",
+  "testTimeout": 30000,
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },

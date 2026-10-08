@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ForbiddenException } from '@nestjs/common';
 import { FileAssertService } from './file-assert.service';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { DataCooker } from '../../../test/utils/DataCooker/DataCooker';
+import { TestDatabase } from '../../../test/utils/TestDatabase/TestDatabase';
 import { PrismaAdapterMockFactory } from '../../../test/utils/mock-services/prisma.adapter.factory';
 import { PrismaAdapterFactory } from '../../prisma/prisma.adapter.factory';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -11,14 +11,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 describe('FileAssertService', () => {
   let service: FileAssertService;
   let prismaService: PrismaService;
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
-    await dataCooker.beforeEach();
+    await testDatabase.beforeEach();
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -30,24 +30,28 @@ describe('FileAssertService', () => {
       providers: [FileAssertService],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
 
     service = module.get<FileAssertService>(FileAssertService);
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
+  afterEach(async () => {
+    await testDatabase.afterEach();
+  });
+
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 
   describe('assertFileInput', () => {
     it('accepts content within the size limit, given an allowed mimeType', () => {
       const content = Buffer.alloc(1024).toString('base64');
 
-      expect(
-        service.assertFileInput({ content, mimeType: 'image/png' }),
-      ).toBe(true);
+      expect(service.assertFileInput({ content, mimeType: 'image/png' })).toBe(
+        true,
+      );
     });
 
     it('rejects decoded content larger than FILE_MAX_SIZE', () => {
@@ -88,7 +92,11 @@ describe('FileAssertService', () => {
       });
 
       await expect(
-        service.assertUpdateFile(file.id, { name: 'renamed.png' }, otherAccount.id),
+        service.assertUpdateFile(
+          file.id,
+          { name: 'renamed.png' },
+          otherAccount.id,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 

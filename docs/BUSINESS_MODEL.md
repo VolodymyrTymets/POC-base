@@ -12,7 +12,7 @@ base — the pieces a new POC would otherwise have to rebuild from scratch.
 ## Ranked goals
 1. **Project scaffolding** — the base itself must stay easy to fork/reuse as the starting point for a new POC.
 2. **Authentication** — a working, understandable auth pipeline (OTP sign-in, JWT access/refresh, roles) that a new POC can rely on as-is.
-3. **Test base** — the testing setup (PGlite + `DataCooker`, real-DB unit/e2e tests) must keep working and stay easy to extend, since a new POC will lean on it from day one.
+3. **Test base** — the testing setup (PGlite + `TestDatabase`, real-DB unit/e2e tests) must keep working and stay easy to extend, since a new POC will lean on it from day one.
 
 ## Non-negotiables (never trade these for speed)
 - Real SMS/email sending must actually be used for those integrations, not mocked/stubbed out, even under time pressure — this base is meant to prove the real integration path works, not a facade over it. (Tests are the exception: they intentionally mock these at the network boundary, per `.claude/rules/testing-js.md`.)

@@ -51,7 +51,7 @@ These hold for NestJS, Express and Fastify alike. The framework file next to thi
 
 ## Tests
 
-22. Unit tests with `DataCooker` against a real PGlite database (rule P5) — never mock Prisma. Integration/e2e through the real Nest app with `supertest`.
+22. Unit tests with `TestDatabase` against a real PGlite database (rule P5) — never mock Prisma. Integration/e2e through the real Nest app with `supertest`.
 
 ## Code organization
 

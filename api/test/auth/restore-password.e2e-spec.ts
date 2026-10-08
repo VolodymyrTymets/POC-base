@@ -3,7 +3,8 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
-import { DataCooker } from '../utils/DataCooker/DataCooker';
+import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
+import { listenOnLoopback } from '../utils/e2e-services/listen-on-loopback';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { NotifierService } from '../../src/notifier/notifier.service';
 import { NotifierTypes } from '../../src/notifier/notifier.service.interface';
@@ -23,7 +24,7 @@ describe('Restore password (e2e)', () => {
   let prismaService: PrismaService;
   let notifySpy: jest.SpyInstance;
 
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
   const password = 'correct horse';
   const newPassword = 'battery staple';
 
@@ -35,25 +36,39 @@ describe('Restore password (e2e)', () => {
 
   const signUp = (email: string) =>
     graphql<GraphQLResponseType<{ signUp: Tokens }>>(
-      `mutation($input: SignUpInput!) {
-        signUp(signUpInput: $input) { accessToken refreshToken }
-      }`,
+      `
+        mutation ($input: SignUpInput!) {
+          signUp(signUpInput: $input) {
+            accessToken
+            refreshToken
+          }
+        }
+      `,
       { input: { email, password } },
     );
 
   const signIn = (email: string, pass: string) =>
     graphql<GraphQLResponseType<{ signIn: Tokens }>>(
-      `mutation($input: PasswordSignInInput!) {
-        signIn(signInInput: $input) { accessToken refreshToken }
-      }`,
+      `
+        mutation ($input: PasswordSignInInput!) {
+          signIn(signInInput: $input) {
+            accessToken
+            refreshToken
+          }
+        }
+      `,
       { input: { email, password: pass } },
     );
 
   const restore = (email: string) =>
     graphql<RestoreResponse>(
-      `mutation($input: RestorePasswordInput!) {
-        restorePassword(restorePasswordInput: $input) { success }
-      }`,
+      `
+        mutation ($input: RestorePasswordInput!) {
+          restorePassword(restorePasswordInput: $input) {
+            success
+          }
+        }
+      `,
       { input: { email } },
     );
 
@@ -63,22 +78,25 @@ describe('Restore password (e2e)', () => {
 
   const reset = (token: string, pass: string) =>
     graphql<ResetResponse>(
-      `mutation($input: ResetPasswordInput!) {
-        resetPassword(resetPasswordInput: $input)
-      }`,
+      `
+        mutation ($input: ResetPasswordInput!) {
+          resetPassword(resetPasswordInput: $input)
+        }
+      `,
       { input: { token, newPassword: pass } },
     );
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
+    await testDatabase.beforeEach();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
     prismaService = await moduleFixture.resolve(PrismaService);
     // call-through spy: the real notifier and queue still run
@@ -88,7 +106,7 @@ describe('Restore password (e2e)', () => {
     );
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
+    await listenOnLoopback(app);
   });
 
   it('Should restore then reset: the new password works and the old one does not', async () => {
@@ -197,9 +215,10 @@ describe('Restore password (e2e)', () => {
   afterEach(async () => {
     notifySpy.mockRestore();
     await app.close();
+    await testDatabase.afterEach();
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 });

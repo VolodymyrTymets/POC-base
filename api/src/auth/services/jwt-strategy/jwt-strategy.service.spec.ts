@@ -9,7 +9,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { PrismaAdapterFactory } from '../../../prisma/prisma.adapter.factory';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { DataCooker } from '../../../../test/utils/DataCooker/DataCooker';
+import { TestDatabase } from '../../../../test/utils/TestDatabase/TestDatabase';
 import { PrismaAdapterMockFactory } from '../../../../test/utils/mock-services/prisma.adapter.factory';
 import { AccountRoleModule } from '../../../account-role/account-role.module';
 
@@ -27,14 +27,14 @@ class TestJwtStrategyService extends JwtStrategyService {
 describe('JwtStrategyService', () => {
   let jwtStrategyService: TestJwtStrategyService;
   let prismaService: PrismaService;
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
-    await dataCooker.beforeEach();
+    await testDatabase.beforeEach();
     const app: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -52,7 +52,7 @@ describe('JwtStrategyService', () => {
       providers: [TestJwtStrategyService],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
 
     jwtStrategyService = app.get<TestJwtStrategyService>(
@@ -61,8 +61,12 @@ describe('JwtStrategyService', () => {
     prismaService = app.get<PrismaService>(PrismaService);
   });
 
+  afterEach(async () => {
+    await testDatabase.afterEach();
+  });
+
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 
   async function createAccountWithIdentity(phoneNumber: string) {

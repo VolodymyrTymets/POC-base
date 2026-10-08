@@ -3,7 +3,8 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
-import { DataCooker } from '../utils/DataCooker/DataCooker';
+import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
+import { listenOnLoopback } from '../utils/e2e-services/listen-on-loopback';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { OtpCodeGeneratorService } from '../../src/auth/services/otp-auth-strategy/otp-code-generator/otp-code-generator.service';
 import type { GraphQLResponseType } from '../utils/e2e-services/interfaces/types';
@@ -17,24 +18,25 @@ describe('Sign in otp (e2e)', () => {
   let prismaService: PrismaService;
   let signInService: SignInService;
 
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
   const otpCodeGenerator = new OtpCodeGeneratorService();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
+    await testDatabase.beforeEach();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
     prismaService = await moduleFixture.resolve(PrismaService);
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    await app.init();
+    await listenOnLoopback(app);
     signInService = new SignInService(app);
   });
 
@@ -273,8 +275,9 @@ describe('Sign in otp (e2e)', () => {
     try {
       const { accessToken } = await signInService.signInOtp(phoneNumber);
 
-      // Wait for the access token to expire.
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // TestDatabase fakes Date, which jsonwebtoken reads for exp, so move the
+      // clock past expiry instead of sleeping.
+      jest.setSystemTime(Date.now() + 1500);
 
       const response = (await request(app.getHttpServer())
         .post('/graphql')
@@ -301,9 +304,10 @@ describe('Sign in otp (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
+    await testDatabase.afterEach();
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 });
