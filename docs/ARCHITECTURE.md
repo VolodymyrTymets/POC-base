@@ -22,7 +22,7 @@
 
 ## Where data truth lives
 - **PostgreSQL (PostGIS enabled)** is the single source of truth for domain data, accessed exclusively through Prisma (`api/src/prisma/prisma.service.ts`).
-- **Redis** is a derived cache only (via `prisma-extension-redis` / `ioredis`, wired in `PrismaCashingService`) — never authoritative, safe to flush (with the caveat that it is also the BullMQ queue backend, so flushing it also drops in-flight background jobs).
+- **Redis** is a derived cache only (via `prisma-extension-redis` / `ioredis`, wired in `PrismaCashingService`; `cacheTransformer` in `api/src/prisma/prisma.cache-transformer.ts` keeps `Date`, `Decimal`, bytes and `BigInt` their Prisma types on a hit, KAN-14) — never authoritative, safe to flush (with the caveat that it is also the BullMQ queue backend, so flushing it also drops in-flight background jobs).
 - **BullMQ queues (Redis-backed)** hold transient background-job state (e.g. `sms-sender`), not domain data.
 - Prisma seed/reference data (roles, dev fixtures) is tracked separately from schema migrations via the `IMigrationItem` mechanism in `api/src/migrations/` (rule P4) — this is itself a source of truth for role definitions, run before the app accepts traffic.
 

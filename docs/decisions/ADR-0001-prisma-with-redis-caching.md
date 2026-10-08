@@ -35,3 +35,11 @@ The caching layer causes a stale-read bug in production, or a second ORM is seri
 separate, unused `@nestjs/cache-manager` `CacheModule` registration in `app.module.ts` that nothing ever
 injected. KAN-1 removed that dead module and both packages. The client this ADR describes has always
 been `ioredis`, corrected above; no behavior changed.
+
+## Amendment (KAN-14, 2026-10-08)
+The cache stored results as plain JSON, so a cache hit returned `Date` as an ISO string and a `Buffer` as
+`{ type, data }` while a miss returned the real types. `cacheTransformer`
+(`api/src/prisma/prisma.cache-transformer.ts`, wired through `prisma.caching.ts`) now tags `Date`, `Decimal`,
+bytes and `BigInt` on the way in and rebuilds them on the way out. Entries written before the deploy stay plain
+JSON until their TTL (60 s + 30 s stale) expires. Ported from valere-poc PR #55. Tests have no Redis, so
+`test/utils/e2e-services/cache-hit-prisma.ts` replays every read through the same transformer.

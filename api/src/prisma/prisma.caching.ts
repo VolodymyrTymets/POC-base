@@ -1,5 +1,5 @@
-// import { SuperJSON } from 'superjson';
 import { type AutoCacheConfig, type CacheConfig } from 'prisma-extension-redis';
+import { cacheTransformer } from './prisma.cache-transformer';
 
 export const auto: AutoCacheConfig = {
   excludedModels: ['Migration'],
@@ -17,11 +17,8 @@ export const config: CacheConfig = {
   ttl: 60, // Default Time-to-live for caching in seconds
   stale: 30, // Default Stale time after ttl in seconds
   auto, // Auto-caching options (configured above)
-  // transformer: {
-  //   // Custom serialize and deserialize function for additional functionality if required
-  //   deserialize: (data) => SuperJSON.parse(data as string),
-  //   serialize: (data) => SuperJSON.stringify(data),
-  // },
+  // Keeps Date, Decimal and bytes the types Prisma returns on a miss (plain JSON would hand back strings)
+  transformer: cacheTransformer,
   type: 'JSON', // Redis cache type, whether you prefer the data to be stored as JSON or STRING in Redis
   cacheKey: {
     delimiter: '*', // Delimiter for keys (default value: ':')
