@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
-import { DataCooker } from '../utils/DataCooker/DataCooker';
+import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import type { GraphQLResponseType } from '../utils/e2e-services/interfaces/types';
 import { SignInService } from '../utils/e2e-services/sign-in.service';
@@ -17,19 +17,19 @@ describe('Update account profile (e2e)', () => {
   let app: INestApplication<App>;
   let signInService: SignInService;
   let prismaService: PrismaService;
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
-    await dataCooker.beforeEach();
+    await testDatabase.beforeEach();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
     prismaService = await moduleFixture.resolve(PrismaService);
     app = moduleFixture.createNestApplication();
@@ -40,11 +40,11 @@ describe('Update account profile (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
-    await dataCooker.afterEach();
+    await testDatabase.afterEach();
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 
   it('Should throw error when not authenticated', async () => {

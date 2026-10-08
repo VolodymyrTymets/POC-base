@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
-import { DataCooker } from '../utils/DataCooker/DataCooker';
+import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
 import type { GraphQLResponseType } from '../utils/e2e-services/interfaces/types';
 import { PrismaAdapterMockFactory } from '../utils/mock-services/prisma.adapter.factory';
 import { PrismaAdapterFactory } from '../../src/prisma/prisma.adapter.factory';
@@ -14,7 +14,7 @@ type Tokens = { accessToken: string; refreshToken: string };
 describe('Change password (e2e)', () => {
   let app: INestApplication<App>;
 
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
   const password = 'correct horse';
   const newPassword = 'battery staple';
 
@@ -32,9 +32,14 @@ describe('Change password (e2e)', () => {
 
   const signUp = async (email: string) => {
     const response = await graphql<GraphQLResponseType<{ signUp: Tokens }>>(
-      `mutation($input: SignUpInput!) {
-        signUp(signUpInput: $input) { accessToken refreshToken }
-      }`,
+      `
+        mutation ($input: SignUpInput!) {
+          signUp(signUpInput: $input) {
+            accessToken
+            refreshToken
+          }
+        }
+      `,
       { input: { email, password } },
     );
     return response.body.data.signUp;
@@ -42,9 +47,14 @@ describe('Change password (e2e)', () => {
 
   const signIn = (email: string, pass: string) =>
     graphql<GraphQLResponseType<{ signIn: Tokens }>>(
-      `mutation($input: PasswordSignInInput!) {
-        signIn(signInInput: $input) { accessToken refreshToken }
-      }`,
+      `
+        mutation ($input: PasswordSignInInput!) {
+          signIn(signInInput: $input) {
+            accessToken
+            refreshToken
+          }
+        }
+      `,
       { input: { email, password: pass } },
     );
 
@@ -54,24 +64,26 @@ describe('Change password (e2e)', () => {
     accessToken?: string,
   ) =>
     graphql<GraphQLResponseType<{ changePassword: boolean }>>(
-      `mutation($input: ChangePasswordInput!) {
-        changePassword(changePasswordInput: $input)
-      }`,
+      `
+        mutation ($input: ChangePasswordInput!) {
+          changePassword(changePasswordInput: $input)
+        }
+      `,
       { input: { currentPassword: current, newPassword: next } },
       accessToken,
     );
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
-    await dataCooker.beforeEach();
+    await testDatabase.beforeEach();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -166,10 +178,10 @@ describe('Change password (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
-    await dataCooker.afterEach();
+    await testDatabase.afterEach();
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 });

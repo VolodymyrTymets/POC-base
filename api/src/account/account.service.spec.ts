@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AccountService } from './account.service';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
-import { DataCooker } from '../../test/utils/DataCooker/DataCooker';
+import { TestDatabase } from '../../test/utils/TestDatabase/TestDatabase';
 import { PrismaAdapterMockFactory } from '../../test/utils/mock-services/prisma.adapter.factory';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrismaAdapterFactory } from '../prisma/prisma.adapter.factory';
@@ -11,14 +11,14 @@ import { AccountRoleModule } from '../account-role/account-role.module';
 describe('AccountService', () => {
   let service: AccountService;
   let prismaService: PrismaService;
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
-    await dataCooker.beforeEach();
+    await testDatabase.beforeEach();
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -31,7 +31,7 @@ describe('AccountService', () => {
       providers: [AccountService],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
 
     service = module.get<AccountService>(AccountService);
@@ -39,7 +39,7 @@ describe('AccountService', () => {
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 
   it('should be defined', () => {

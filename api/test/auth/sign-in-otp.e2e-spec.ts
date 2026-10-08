@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
-import { DataCooker } from '../utils/DataCooker/DataCooker';
+import { TestDatabase } from '../utils/TestDatabase/TestDatabase';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { OtpCodeGeneratorService } from '../../src/auth/services/otp-auth-strategy/otp-code-generator/otp-code-generator.service';
 import type { GraphQLResponseType } from '../utils/e2e-services/interfaces/types';
@@ -17,20 +17,20 @@ describe('Sign in otp (e2e)', () => {
   let prismaService: PrismaService;
   let signInService: SignInService;
 
-  const dataCooker = new DataCooker();
+  const testDatabase = new TestDatabase();
   const otpCodeGenerator = new OtpCodeGeneratorService();
 
   beforeAll(async () => {
-    await dataCooker.beforeAll();
+    await testDatabase.beforeAll();
   });
 
   beforeEach(async () => {
-    await dataCooker.beforeEach();
+    await testDatabase.beforeEach();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(PrismaAdapterFactory)
-      .useValue(new PrismaAdapterMockFactory(dataCooker.getPgLitle()))
+      .useValue(new PrismaAdapterMockFactory(testDatabase.getPGlite()))
       .compile();
     prismaService = await moduleFixture.resolve(PrismaService);
     app = moduleFixture.createNestApplication();
@@ -274,7 +274,7 @@ describe('Sign in otp (e2e)', () => {
     try {
       const { accessToken } = await signInService.signInOtp(phoneNumber);
 
-      // DataCooker fakes Date, which jsonwebtoken reads for exp, so move the
+      // TestDatabase fakes Date, which jsonwebtoken reads for exp, so move the
       // clock past expiry instead of sleeping.
       jest.setSystemTime(Date.now() + 1500);
 
@@ -303,10 +303,10 @@ describe('Sign in otp (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
-    await dataCooker.afterEach();
+    await testDatabase.afterEach();
   });
 
   afterAll(async () => {
-    await dataCooker.afterAll();
+    await testDatabase.afterAll();
   });
 });

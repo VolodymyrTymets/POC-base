@@ -3,13 +3,13 @@
  */
 import { PGlite } from '@electric-sql/pglite';
 import { PrismaClient } from 'generated/prisma/client';
-import { IDataCooker } from './IDataCooker';
+import { ITestDatabase } from './ITestDatabase';
 import { PrismaPGlite } from 'pglite-prisma-adapter';
 import { postgis } from '@electric-sql/pglite-postgis';
 import { IMigratedTemplate } from '../MigratedTemplate/IMigratedTemplate';
 import { MigratedTemplate } from '../MigratedTemplate/MigratedTemplate';
 
-export class DataCooker implements IDataCooker {
+export class TestDatabase implements ITestDatabase {
   constructor() {}
   private readonly migratedTemplate: IMigratedTemplate = new MigratedTemplate();
   private pGlite: PGlite | undefined;
@@ -41,15 +41,15 @@ export class DataCooker implements IDataCooker {
     await this.pGlite?.close();
   }
 
-  getPgLitle(): PGlite {
+  getPGlite(): PGlite {
     if (!this.pGlite) {
-      throw new Error('DataCooker.beforeAll() must run before getPgLitle()');
+      throw new Error('TestDatabase.beforeAll() must run before getPGlite()');
     }
     return this.pGlite;
   }
   getPrisma(): PrismaClient {
     if (!this.prisma) {
-      throw new Error('DataCooker.beforeAll() must run before getPrisma()');
+      throw new Error('TestDatabase.beforeAll() must run before getPrisma()');
     }
     return this.prisma;
   }
