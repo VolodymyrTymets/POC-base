@@ -19,6 +19,7 @@ describe('Refresh token (e2e)', () => {
   });
 
   beforeEach(async () => {
+    await dataCooker.beforeEach();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -91,8 +92,9 @@ describe('Refresh token (e2e)', () => {
     try {
       const { refreshToken } = await signInService.signInOtp(phoneNumber);
 
-      // Wait for the refresh token to expire.
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // DataCooker fakes Date, which jsonwebtoken reads for exp, so move the
+      // clock past expiry instead of sleeping.
+      jest.setSystemTime(Date.now() + 1500);
 
       const response = (await request(app.getHttpServer())
         .post('/graphql')
@@ -148,6 +150,11 @@ describe('Refresh token (e2e)', () => {
     }>;
     expect(response.body.errors).toBeDefined();
     expect(response.body.errors[0].extensions?.code).toEqual('UNAUTHENTICATED');
+  });
+
+  afterEach(async () => {
+    await app.close();
+    await dataCooker.afterEach();
   });
 
   afterAll(async () => {

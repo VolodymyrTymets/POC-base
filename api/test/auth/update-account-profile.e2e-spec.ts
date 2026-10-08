@@ -24,6 +24,7 @@ describe('Update account profile (e2e)', () => {
   });
 
   beforeEach(async () => {
+    await dataCooker.beforeEach();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -39,6 +40,7 @@ describe('Update account profile (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
+    await dataCooker.afterEach();
   });
 
   afterAll(async () => {

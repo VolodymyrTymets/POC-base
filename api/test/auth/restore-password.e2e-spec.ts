@@ -74,6 +74,7 @@ describe('Restore password (e2e)', () => {
   });
 
   beforeEach(async () => {
+    await dataCooker.beforeEach();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -197,6 +198,7 @@ describe('Restore password (e2e)', () => {
   afterEach(async () => {
     notifySpy.mockRestore();
     await app.close();
+    await dataCooker.afterEach();
   });
 
   afterAll(async () => {

@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { Logger } from '@nestjs/common';
@@ -26,13 +29,20 @@ export class DataCooker implements IDataCooker {
   );
   private migrationsService: MigrationsService | undefined;
 
+  // Verbose migration logging is noise in every suite; opt in with VERBOSE=1
+  private log(message: string) {
+    if (process.env.VERBOSE) {
+      Logger.log(message);
+    }
+  }
+
   private getMigrations() {
     const migrations: Array<{
       migrationName: string;
       migrationFile: string;
       migrationContent: string;
     }> = [];
-    Logger.log(
+    this.log(
       `[PrismaAdapterFactory] Reading  in ${this.prismaMigrationsPath}: `,
     );
     const migrationsFolder = fs.readdirSync(this.prismaMigrationsPath);
@@ -42,7 +52,7 @@ export class DataCooker implements IDataCooker {
           .lstatSync(path.join(this.prismaMigrationsPath, migration))
           .isDirectory()
       ) {
-        Logger.log(
+        this.log(
           `[DataCooker] Reading in: ${path.join(this.prismaMigrationsPath, migration)}`,
         );
         const migrationFiles = fs.readdirSync(
@@ -54,7 +64,7 @@ export class DataCooker implements IDataCooker {
             migration,
             migrationFile,
           );
-          Logger.log(`[DataCooker] Reading migration: ${filePath}`);
+          this.log(`[DataCooker] Reading migration: ${filePath}`);
           migrations.push({
             migrationName: migration,
             migrationFile: migrationFile,
@@ -69,7 +79,7 @@ export class DataCooker implements IDataCooker {
   private async initMigration() {
     const migrations = this.getMigrations();
     for (const migration of migrations) {
-      Logger.log(`DataCooker] Executing migration: ${migration.migrationName}`);
+      this.log(`[DataCooker] Executing migration: ${migration.migrationName}`);
       if (this.pGlite === undefined || this.prisma === undefined) {
         return;
       }
@@ -83,6 +93,7 @@ export class DataCooker implements IDataCooker {
         postgis,
       },
     });
+    await this.pGlite.waitReady;
     const prisma = new PrismaClient({
       adapter: new PrismaPGlite(this.pGlite),
     });
@@ -110,11 +121,15 @@ export class DataCooker implements IDataCooker {
     await this.migrationsService.runMigrations();
   }
   async beforeEach() {
-    // todo: implement data migrations
+    // The e2e fake clock (jsonwebtoken reads Date for exp) lets tests move time instead of sleeping;
+    // real timers stay on so awaits and PGlite I/O still resolve
+    jest.useFakeTimers({
+      doNotFake: ['nextTick', 'setImmediate', 'setTimeout', 'clearTimeout'],
+    });
   }
 
   async afterEach() {
-    // todo: implement
+    jest.useRealTimers();
   }
   async afterAll() {
     if (!this.prisma) return;

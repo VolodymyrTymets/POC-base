@@ -25,6 +25,7 @@ describe('Sign in otp (e2e)', () => {
   });
 
   beforeEach(async () => {
+    await dataCooker.beforeEach();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -273,8 +274,9 @@ describe('Sign in otp (e2e)', () => {
     try {
       const { accessToken } = await signInService.signInOtp(phoneNumber);
 
-      // Wait for the access token to expire.
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // DataCooker fakes Date, which jsonwebtoken reads for exp, so move the
+      // clock past expiry instead of sleeping.
+      jest.setSystemTime(Date.now() + 1500);
 
       const response = (await request(app.getHttpServer())
         .post('/graphql')
@@ -301,6 +303,7 @@ describe('Sign in otp (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
+    await dataCooker.afterEach();
   });
 
   afterAll(async () => {
